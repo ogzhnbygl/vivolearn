@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VivoLearn
 
-## Getting Started
+VivoLearn, Medeniyet Üniversitesi için teorik derslerin çevrim içi yönetimini sağlayan bir Next.js uygulamasıdır. Öğrenciler kurs başvuruları yapabilir, onaylanmış run içerisinde dersleri izleyip quiz çözebilir. Eğitmenler kurs/run/ders ve quiz içeriklerini yönetir, başvuruları değerlendirir. Admin kullanıcılar ise rolleri düzenler.
 
-First, run the development server:
+## Teknoloji Yığını
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- [Next.js 15](https://nextjs.org/) (App Router, TypeScript, React 19)
+- [Tailwind CSS 4](https://tailwindcss.com/)
+- [Supabase](https://supabase.com/) (PostgreSQL + Auth + RLS)
+- Yerleşik server actions ile API katmanı
+
+## Dizin Yapısı
+
+```
+src/
+  app/                 # Route segmentleri ve server bileşenleri
+  components/          # UI, form ve pano bileşenleri
+  lib/                 # Supabase client'ları, tipler, yardımcılar
+supabase/
+  migrations/0001_init.sql  # Şema ve RLS tanımları
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Kurulum
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Bağımlılıkları yükleyin**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Supabase projesi oluşturun**
+   - [Supabase Dashboard](https://supabase.com/) üzerinden yeni bir proje açın.
+   - `Authentication > Providers` bölümünde Email/Password yöntemini etkinleştirin.
+   - `SQL Editor` sekmesinde `supabase/migrations/0001_init.sql` dosyasının içeriğini çalıştırarak şemayı ve RLS politikalarını oluşturun.
 
-## Learn More
+3. **Ortam değişkenlerini hazırlayın**
+   `.env.local` dosyasını oluşturup aşağıdaki değerleri doldurun:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT.supabase.co"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="anon-public-key"
+   SUPABASE_SERVICE_ROLE_KEY="service-role-key"
+   ```
+   > `SUPABASE_SERVICE_ROLE_KEY` yalnızca server ortamında kullanılır; istemciye sızdırmayın.
 
-To learn more about Next.js, take a look at the following resources:
+4. **Geliştirme sunucusunu başlatın**
+   ```bash
+   npm run dev
+   ```
+   Uygulama varsayılan olarak [http://localhost:3000](http://localhost:3000) adresinde çalışır.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Komutlar
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Komut           | Açıklama                         |
+|-----------------|----------------------------------|
+| `npm run dev`   | Geliştirme sunucusunu başlatır   |
+| `npm run build` | Prodüksiyon derlemesi yapar      |
+| `npm run start` | Prodüksiyon sunucusunu çalıştırır|
+| `npm run lint`  | ESLint ile tip ve stil denetimi  |
 
-## Deploy on Vercel
+## Supabase Notları
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Şema `supabase/migrations/0001_init.sql` dosyasında yer alır. Yeni değişiklikler için benzer SQL migration dosyaları eklenmelidir.
+- RLS politikaları öğrencilerin yalnızca onaylı run içindeki derslere erişmesini ve eğitmen/admin yetkilerinin korunmasını sağlar.
+- Yeni kullanıcılar email/password ile kayıt olduğunda `profiles` tablosuna varsayılan olarak `student` rolü ile eklenir.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Vercel Deploy
+
+1. Depoyu Vercel'e bağlayın ve "Next.js" şablonu ile deploy talimatlarını izleyin.
+2. Vercel projesinde aşağıdaki Environment Variable değerlerini girin:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+3. Supabase origin'inizi `Auth > URL configuration` bölümünde Vercel domain'i ile güncelleyin.
+4. Deploy sonrasında `npm run build` sırasında hata olmaması için Supabase anahtarlarının doğru olduğundan emin olun.
+
+## Yol Haritası / Geliştirme Önerileri
+
+- Quiz sonuçlarına göre uygulama dersi uygunluk mekanizmasının genişletilmesi
+- Supabase Storage ile video yönetiminin eklenmesi
+- Eğitmen paneli için detaylı raporlama ekranları

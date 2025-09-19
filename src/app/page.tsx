@@ -1,103 +1,94 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Container } from "@/components/layout/container";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDateRange } from "@/lib/utils";
+import { getPublishedCourses, partitionCoursesByRunState } from "@/lib/courses";
 
-export default function Home() {
+export default async function HomePage() {
+  const courses = await getPublishedCourses();
+  const { open, upcoming, past } = partitionCoursesByRunState(courses);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <Container className="flex flex-col gap-12">
+      <section className="grid gap-6 rounded-3xl bg-white/70 p-10 shadow-xl ring-1 ring-primary-100">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <Badge variant="outline" className="uppercase tracking-wide">
+              Medeniyet Üniversitesi
+            </Badge>
+            <h1 className="text-3xl font-semibold text-primary-900 md:text-4xl">
+              VivoLearn ile teorik dersleri online tamamlayın
+            </h1>
+            <p className="max-w-2xl text-base text-slate-600">
+              Fakülte ve programlar için hazırlanan içerikleri izleyin, quizlerle kendinizi
+              değerlendirin ve uygulama derslerine katılmaya hazır olun.
+            </p>
+          </div>
+          <Button asChild size="lg">
+            <Link href="/courses">Tüm Kursları İncele</Link>
+          </Button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </section>
+
+      <CourseSection title="Açık Kurslar" emptyText="Şu anda açık kurs bulunmuyor" courses={open} />
+      <CourseSection title="Yakında Başlayacak" emptyText="Yeni dönemler yakında yüklenecek" courses={upcoming} />
+      <CourseSection title="Tamamlanmış Programlar" emptyText="Tamamlanmış kurs bulunmuyor" courses={past} />
+    </Container>
+  );
+}
+
+interface CourseSectionProps {
+  title: string;
+  emptyText: string;
+  courses: Awaited<ReturnType<typeof getPublishedCourses>>;
+}
+
+function CourseSection({ title, emptyText, courses }: CourseSectionProps) {
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-primary-900">{title}</h2>
+        <Link href="/courses" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+          Tümünü gör
+        </Link>
+      </div>
+      {courses.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
+          {emptyText}
+        </p>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {courses.map((course) => (
+            <Card key={course.id} className="h-full">
+              <CardHeader>
+                <CardTitle>{course.title}</CardTitle>
+                <p className="text-sm text-slate-500">
+                  {course.summary ?? course.description?.slice(0, 120) ?? "Detaylar yakında"}
+                </p>
+              </CardHeader>
+              <CardContent className="flex h-full flex-col justify-between gap-6">
+                <div className="flex flex-col gap-2 text-sm text-slate-600">
+                  <p>
+                    <span className="font-medium">Sorumlu Eğitmen:</span> {" "}
+                    {course.instructor?.full_name ?? "Belirlenecek"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Sonraki dönem:</span> {" "}
+                    {course.course_runs.length > 0
+                      ? formatDateRange(course.course_runs[0]?.access_start, course.course_runs[0]?.access_end)
+                      : "Takvim yakında"}
+                  </p>
+                </div>
+                <Button asChild variant="secondary">
+                  <Link href={`/courses/${course.id}`}>Detayları Gör</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
