@@ -4,6 +4,13 @@ import { getSupabaseServerComponentClient } from "./supabase-server";
 
 type Profile = Tables<"profiles">;
 
+const isAuthSessionMissingError = (error: unknown) =>
+  !!error &&
+  typeof error === "object" &&
+  "message" in error &&
+  typeof (error as { message?: string }).message === "string" &&
+  (error as { message: string }).message.toLowerCase().includes("session missing");
+
 export async function getAuthSession(): Promise<Session | null> {
   const supabase = getSupabaseServerComponentClient();
   const {
@@ -11,12 +18,12 @@ export async function getAuthSession(): Promise<Session | null> {
     error,
   } = await supabase.auth.getSession();
 
-  if (error) {
+  if (error && !isAuthSessionMissingError(error)) {
     console.error("Supabase session error", error.message);
     return null;
   }
 
-  return session;
+  return session ?? null;
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {
@@ -26,12 +33,12 @@ export async function getAuthenticatedUser(): Promise<User | null> {
     error,
   } = await supabase.auth.getUser();
 
-  if (error) {
+  if (error && !isAuthSessionMissingError(error)) {
     console.error("Supabase getUser error", error.message);
     return null;
   }
 
-  return user;
+  return user ?? null;
 }
 
 export async function getCurrentProfile(): Promise<Profile | null> {

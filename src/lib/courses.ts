@@ -1,4 +1,3 @@
-import { cache } from "react";
 import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
@@ -7,22 +6,27 @@ export type CourseWithRelations = Tables<"courses"> & {
   course_runs: Tables<"course_runs">[];
 };
 
-export const getPublishedCourses = cache(async () => {
-  const supabase = getSupabaseServerComponentClient();
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      "*, course_runs(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
-    )
-    .eq("is_published", true)
-    .order("created_at", { ascending: false });
+export async function getPublishedCourses() {
+  try {
+    const supabase = getSupabaseServerComponentClient();
+    const { data, error } = await supabase
+      .from("courses")
+      .select(
+        "*, course_runs(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+      )
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(`Kurslar alınırken hata oluştu: ${error.message}`);
+    if (error) {
+      throw new Error(`Kurslar alınırken hata oluştu: ${error.message}`);
+    }
+
+    return (data ?? []) as CourseWithRelations[];
+  } catch (err) {
+    console.error("Supabase kurs sorgusu hatası", err);
+    return [];
   }
-
-  return (data ?? []) as CourseWithRelations[];
-});
+}
 
 export function partitionCoursesByRunState(courses: CourseWithRelations[]) {
   const now = new Date();
