@@ -2,14 +2,14 @@
 
 import { useTransition } from "react";
 import { updateUserRoleAction } from "@/app/actions/admin";
-import { Tables } from "@/lib/database.types";
+import type { Database } from "@/lib/database.types";
 
 interface RoleSelectProps {
   userId: string;
-  currentRole: Tables["public"]["Enums"]["user_role"];
+  currentRole: Database["public"]["Enums"]["user_role"];
 }
 
-const roleLabels: Record<Tables["public"]["Enums"]["user_role"], string> = {
+const roleLabels: Record<Database["public"]["Enums"]["user_role"], string> = {
   student: "Öğrenci",
   instructor: "Eğitmen",
   admin: "Admin",
@@ -24,7 +24,7 @@ export function RoleSelect({ userId, currentRole }: RoleSelectProps) {
       defaultValue={currentRole}
       disabled={isPending}
       onChange={(event) => {
-        const nextRole = event.target.value as Tables["public"]["Enums"]["user_role"];
+        const nextRole = event.target.value as Database["public"]["Enums"]["user_role"];
         startTransition(async () => {
           await updateUserRoleAction({ userId, role: nextRole });
         });

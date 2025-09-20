@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSupabaseServerActionClient } from "@/lib/supabase-server";
-import type { Tables } from "@/lib/database.types";
+import type { Database } from "@/lib/database.types";
 
-type UserRole = Tables["public"]["Enums"]["user_role"];
+type UserRole = Database["public"]["Enums"]["user_role"];
 
 interface UpdateUserRolePayload {
   userId: string;
