@@ -34,9 +34,10 @@ export default async function ProfilePage() {
     .select("*")
     .eq("student_id", profile.id);
 
+  const typedProgressRows = (progressRows ?? []) as Tables<"progress">[];
   const progressByLesson = new Map<string, Tables<"progress">>();
-  (progressRows ?? []).forEach((row) => {
-    progressByLesson.set(`${row.course_run_id}-${row.lesson_id}`, row as Tables<"progress">);
+  typedProgressRows.forEach((row) => {
+    progressByLesson.set(`${row.course_run_id}-${row.lesson_id}`, row);
   });
 
   const typedEnrollments = (enrollments ?? []) as (Tables<"enrollments"> & {
