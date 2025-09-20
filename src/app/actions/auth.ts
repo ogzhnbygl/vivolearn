@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase-server";
+import {
+  getSupabaseServerActionClient,
+  getSupabaseServiceRoleClient,
+} from "@/lib/supabase-server";
 
 interface SignInPayload {
   email: string;
@@ -11,7 +14,7 @@ interface SignInPayload {
 }
 
 export async function signInAction({ email, password, redirectTo }: SignInPayload) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -34,7 +37,7 @@ export async function registerAction({ fullName, email, password }: RegisterPayl
     return { error: "Şifre en az 6 karakter olmalıdır." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -65,7 +68,7 @@ export async function registerAction({ fullName, email, password }: RegisterPayl
 }
 
 export async function signOutAction() {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   await supabase.auth.signOut();
   revalidatePath("/");
   redirect("/");

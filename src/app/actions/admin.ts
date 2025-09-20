@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerActionClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
 type UserRole = Tables["public"]["Enums"]["user_role"];
@@ -18,7 +18,7 @@ export async function updateUserRoleAction({ userId, role }: UpdateUserRolePaylo
     return { error: "Yetkiniz yok." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase
     .from("profiles")
     .update({ role })

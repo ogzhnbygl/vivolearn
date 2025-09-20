@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getLessonDetail, type LessonDetail } from "@/lib/lessons";
-import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase-server";
+import {
+  getSupabaseServerComponentClient,
+  getSupabaseServiceRoleClient,
+} from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
 import { formatDateRange } from "@/lib/utils";
 import type { Tables } from "@/lib/database.types";
@@ -68,7 +71,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
     );
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const courseRunIds = lesson.course.course_runs.map((run) => run.id);
   const { data: enrollment } = await supabase
     .from("enrollments")

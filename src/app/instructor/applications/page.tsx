@@ -1,5 +1,5 @@
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApplicationDecisionButtons } from "@/components/instructor/application-decision-buttons";
 import { formatDateRange } from "@/lib/utils";
@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function InstructorApplicationsPage() {
   const profile = await getCurrentProfile();
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
 
   const { data } = await supabase
     .from("enrollments")

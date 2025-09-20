@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerActionClient } from "@/lib/supabase-server";
 
 interface UpdateLessonProgressPayload {
   lessonId: string;
@@ -20,7 +20,7 @@ export async function updateLessonProgressAction({
     return { error: "Giriş yapmalısınız." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const timestamp = new Date().toISOString();
 
   const { error } = await supabase

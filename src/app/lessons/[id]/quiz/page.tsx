@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { formatDateRange } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ export default async function LessonQuizAttemptPage({ params }: LessonQuizPagePr
     redirect(`/login?redirectTo=/lessons/${id}/quiz`);
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data: lessonData } = await supabase
     .from("lessons")
     .select(

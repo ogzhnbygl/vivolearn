@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoleSelect } from "@/components/admin/role-select";
@@ -17,7 +17,7 @@ export default async function AdminUsersPage() {
     redirect("/profile");
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data } = await supabase
     .from("profiles")
     .select("*")

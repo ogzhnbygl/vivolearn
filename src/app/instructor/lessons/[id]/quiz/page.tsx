@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
 import { CreateQuizForm } from "@/components/instructor/create-quiz-form";
 import { CreateQuizQuestionForm } from "@/components/instructor/create-quiz-question-form";
@@ -20,7 +20,7 @@ export default async function LessonQuizPage({ params }: LessonQuizPageProps) {
     redirect("/profile");
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("lessons")
     .select(

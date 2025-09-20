@@ -1,11 +1,11 @@
 import type { Session, User } from "@supabase/supabase-js";
 import type { Tables } from "./database.types";
-import { getSupabaseServerClient } from "./supabase-server";
+import { getSupabaseServerComponentClient } from "./supabase-server";
 
 type Profile = Tables<"profiles">;
 
 export async function getAuthSession(): Promise<Session | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const {
     data: { session },
     error,
@@ -20,7 +20,7 @@ export async function getAuthSession(): Promise<Session | null> {
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const {
     data: { user },
     error,
@@ -40,7 +40,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     return null;
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("profiles")
     .select("*")

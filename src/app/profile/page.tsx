@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { formatDateRange } from "@/lib/utils";
 import Link from "next/link";
 import type { Tables } from "@/lib/database.types";
@@ -20,7 +20,7 @@ export default async function ProfilePage() {
     redirect("/login?redirectTo=/profile");
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select(

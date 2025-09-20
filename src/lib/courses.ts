@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
 export type CourseWithRelations = Tables<"courses"> & {
@@ -8,7 +8,7 @@ export type CourseWithRelations = Tables<"courses"> & {
 };
 
 export const getPublishedCourses = cache(async () => {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("courses")
     .select(
@@ -54,7 +54,7 @@ export function partitionCoursesByRunState(courses: CourseWithRelations[]) {
 }
 
 export async function getCourseDetail(courseId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("courses")
     .select(

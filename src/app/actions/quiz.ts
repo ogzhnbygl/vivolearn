@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerActionClient } from "@/lib/supabase-server";
 
 interface CreateQuizPayload {
   lessonId: string;
@@ -24,7 +24,7 @@ export async function createQuizForLessonAction({
     return { error: "Quiz oluşturma yetkiniz yok." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { data: lessonInfo, error: lessonError } = await supabase
     .from("lessons")
     .select("course_id, course:courses(instructor_id)")
@@ -76,7 +76,7 @@ export async function createQuizQuestionAction({ quizId, prompt, orderIndex }: C
     return { error: "Soru metni zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase.from("quiz_questions").insert({
     quiz_id: quizId,
     prompt,
@@ -103,7 +103,7 @@ export async function createQuizOptionAction({ questionId, text, isCorrect }: Cr
     return { error: "Seçenek metni zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase.from("quiz_options").insert({
     question_id: questionId,
     text,
@@ -125,7 +125,7 @@ interface ToggleOptionPayload {
 }
 
 export async function toggleQuizOptionCorrectAction({ optionId, isCorrect }: ToggleOptionPayload) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { data, error } = await supabase
     .from("quiz_options")
     .update({ is_correct: isCorrect })
@@ -160,7 +160,7 @@ export async function submitQuizAttemptAction({
     return { error: "Giriş yapmalısınız." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
 
   const { data: enrollment } = await supabase
     .from("enrollments")
@@ -233,7 +233,7 @@ export async function submitQuizAttemptAction({
 }
 
 async function getLessonIdForQuiz(quizId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { data } = await supabase
     .from("quizzes")
     .select("lesson_id")
@@ -243,7 +243,7 @@ async function getLessonIdForQuiz(quizId: string) {
 }
 
 async function getLessonIdForQuestion(questionId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { data } = await supabase
     .from("quiz_questions")
     .select("quiz:quiz_id(lesson_id)")

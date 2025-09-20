@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
 export type LessonDetail = Tables<"lessons"> & {
@@ -14,7 +14,7 @@ export type LessonDetail = Tables<"lessons"> & {
 };
 
 export async function getLessonDetail(lessonId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("lessons")
     .select(

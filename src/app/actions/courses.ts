@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerActionClient } from "@/lib/supabase-server";
 
 function slugify(input: string) {
   return input
@@ -30,7 +30,7 @@ export async function createCourseAction(payload: CreateCoursePayload) {
     return { error: "Başlık zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const slugBase = slugify(payload.title);
   const slug = `${slugBase}-${Date.now().toString(36)}`;
 
@@ -68,7 +68,7 @@ export async function createCourseRunAction(payload: CreateCourseRunPayload) {
     return { error: "Erişim başlangıç tarihi zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase.from("course_runs").insert({
     course_id: payload.courseId,
     label: payload.label,
@@ -104,7 +104,7 @@ export async function createLessonAction(payload: CreateLessonPayload) {
     return { error: "Başlık ve video adresi zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase.from("lessons").insert({
     course_id: payload.courseId,
     title: payload.title,
@@ -129,7 +129,7 @@ interface UpdateEnrollmentStatusPayload {
 }
 
 export async function updateEnrollmentStatusAction({ enrollmentId, status }: UpdateEnrollmentStatusPayload) {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
   const { error, data } = await supabase
     .from("enrollments")
     .update({ status, decided_at: new Date().toISOString() })
@@ -175,7 +175,7 @@ export async function applyToCourseAction({ courseId, courseRunId, receiptNo }: 
     return { error: "Dekont numarası zorunludur." };
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerActionClient();
 
   const { data: runData, error: runError } = await supabase
     .from("course_runs")

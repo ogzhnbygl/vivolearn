@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CreateLessonForm } from "@/components/instructor/create-lesson-form";
 import { CreateCourseRunForm } from "@/components/instructor/create-course-run-form";
 import { ApplicationDecisionButtons } from "@/components/instructor/application-decision-buttons";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
 import { formatDateRange } from "@/lib/utils";
 import type { Tables } from "@/lib/database.types";
@@ -23,7 +23,7 @@ export default async function InstructorCoursePage({ params }: InstructorCourseP
     redirect("/profile");
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   const { data, error } = await supabase
     .from("courses")
     .select(

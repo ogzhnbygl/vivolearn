@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { formatDateRange } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import type { Tables } from "@/lib/database.types";
 
 export default async function InstructorDashboard() {
   const profile = await getCurrentProfile();
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
 
   const { data } = await supabase
     .from("courses")

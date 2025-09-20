@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateRange } from "@/lib/utils";
 import { getCourseDetail } from "@/lib/courses";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
 import type { Tables } from "@/lib/database.types";
 import { CourseApplicationForm } from "@/components/course-application-form";
@@ -24,7 +24,7 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
   }
 
   const profile = await getCurrentProfile();
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerComponentClient();
   let existingEnrollment: (Tables<"enrollments"> & {
     course_runs: Tables<"course_runs">;
   }) | null = null;
