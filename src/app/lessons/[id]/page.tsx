@@ -117,13 +117,15 @@ export default async function LessonPage({ params }: LessonPageProps) {
     );
   }
 
-  const { data: progress } = await supabase
+  const { data: progressRow } = await supabase
     .from("progress")
     .select("*")
     .eq("student_id", profile.id)
     .eq("lesson_id", lesson.id)
     .eq("course_run_id", typedEnrollment.course_run_id)
     .maybeSingle();
+
+  const progress = (progressRow as Tables<"progress"> | null) ?? null;
 
   const quiz = lesson.quizzes[0];
 
