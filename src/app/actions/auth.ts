@@ -6,6 +6,8 @@ import {
   getSupabaseServerActionClient,
   getSupabaseServiceRoleClient,
 } from "@/lib/supabase-server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, TablesInsert } from "@/lib/database.types";
 
 interface SignInPayload {
   email: string;
@@ -52,12 +54,15 @@ export async function registerAction({ fullName, email, password }: RegisterPayl
     return { error: "Kullanıcı oluşturulamadı." };
   }
 
-  const serviceClient = getSupabaseServiceRoleClient();
-  const { error: profileError } = await serviceClient.from("profiles").upsert({
+  const serviceClient = getSupabaseServiceRoleClient() as unknown as SupabaseClient<Database>;
+  const profileInsert: TablesInsert<"profiles"> = {
     id: user.id,
     email: user.email!,
     full_name: fullName,
-  });
+  };
+  const { error: profileError } = await serviceClient
+    .from("profiles")
+    .upsert(profileInsert);
 
   if (profileError) {
     return { error: "Profil kaydı başarısız: " + profileError.message };

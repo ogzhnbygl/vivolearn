@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { formatDateRange } from "@/lib/utils";
 import { getPublishedCourses, partitionCoursesByRunState } from "@/lib/courses";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const courses = await getPublishedCourses();
   const { open, upcoming, past } = partitionCoursesByRunState(courses);

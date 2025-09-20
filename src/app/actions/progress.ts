@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSupabaseServerActionClient } from "@/lib/supabase-server";
+import type { TablesInsert } from "@/lib/database.types";
 
 interface UpdateLessonProgressPayload {
   lessonId: string;
@@ -23,19 +24,18 @@ export async function updateLessonProgressAction({
   const supabase = getSupabaseServerActionClient();
   const timestamp = new Date().toISOString();
 
+  const progressPayload: TablesInsert<"progress"> = {
+    student_id: profile.id,
+    lesson_id: lessonId,
+    course_run_id: courseRunId,
+    is_completed: completed,
+    last_viewed_at: timestamp,
+    completed_at: completed ? timestamp : null,
+  };
+
   const { error } = await supabase
     .from("progress")
-    .upsert(
-      {
-        student_id: profile.id,
-        lesson_id: lessonId,
-        course_run_id: courseRunId,
-        is_completed: completed,
-        last_viewed_at: timestamp,
-        completed_at: completed ? timestamp : null,
-      },
-      { onConflict: "student_id,course_run_id,lesson_id" }
-    );
+    .upsert(progressPayload, { onConflict: "student_id,course_run_id,lesson_id" });
 
   if (error) {
     return { error: "İlerleme güncellenemedi: " + error.message };

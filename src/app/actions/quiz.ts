@@ -31,11 +31,18 @@ export async function createQuizForLessonAction({
     .eq("id", lessonId)
     .single();
 
-  if (lessonError || !lessonInfo) {
+  type LessonOwnerInfo = {
+    course_id: string;
+    course: { instructor_id: string | null } | null;
+  };
+
+  const typedLessonInfo = lessonInfo as LessonOwnerInfo | null;
+
+  if (lessonError || !typedLessonInfo) {
     return { error: "Ders bulunamadı." };
   }
 
-  if (lessonInfo.course?.instructor_id !== profile.id && profile.role !== "admin") {
+  if (typedLessonInfo.course?.instructor_id !== profile.id && profile.role !== "admin") {
     return { error: "Bu ders için yetkiniz yok." };
   }
 
@@ -149,12 +156,16 @@ interface SubmitQuizAttemptPayload {
   answers: Record<string, string>;
 }
 
+type SubmitQuizAttemptResult =
+  | { error: string }
+  | { success: true; score: number; passed: boolean };
+
 export async function submitQuizAttemptAction({
   quizId,
   courseRunId,
   lessonId,
   answers,
-}: SubmitQuizAttemptPayload) {
+}: SubmitQuizAttemptPayload): Promise<SubmitQuizAttemptResult> {
   const profile = await getCurrentProfile();
   if (!profile) {
     return { error: "Giriş yapmalısınız." };
@@ -229,7 +240,7 @@ export async function submitQuizAttemptAction({
   revalidatePath(`/lessons/${lessonId}`);
   revalidatePath(`/lessons/${lessonId}/quiz`);
   revalidatePath("/profile");
-  return { success: true, score, passed } as const;
+  return { success: true, score, passed };
 }
 
 async function getLessonIdForQuiz(quizId: string) {
@@ -249,5 +260,10 @@ async function getLessonIdForQuestion(questionId: string) {
     .select("quiz:quiz_id(lesson_id)")
     .eq("id", questionId)
     .single();
-  return data?.quiz?.lesson_id ?? "";
+  type QuestionInfo = {
+    quiz: { lesson_id: string | null } | null;
+  };
+
+  const typedData = data as QuestionInfo | null;
+  return typedData?.quiz?.lesson_id ?? "";
 }

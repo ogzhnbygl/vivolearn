@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSupabaseServerActionClient } from "@/lib/supabase-server";
+import type { Tables, TablesInsert, TablesUpdate } from "@/lib/database.types";
 
 function slugify(input: string) {
   return input
@@ -34,15 +35,17 @@ export async function createCourseAction(payload: CreateCoursePayload) {
   const slugBase = slugify(payload.title);
   const slug = `${slugBase}-${Date.now().toString(36)}`;
 
-  const { error } = await supabase.from("courses").insert({
+  const courseInsert: TablesInsert<"courses"> = {
     title: payload.title,
-    summary: payload.summary,
-    description: payload.description,
-    cover_image_url: payload.coverImageUrl,
+    summary: payload.summary ?? null,
+    description: payload.description ?? null,
+    cover_image_url: payload.coverImageUrl ?? null,
     is_published: payload.isPublished,
     instructor_id: profile.id,
     slug,
-  });
+  };
+
+  const { error } = await supabase.from("courses").insert(courseInsert);
 
   if (error) {
     return { error: "Kurs kaydedilemedi: " + error.message };
@@ -69,9 +72,9 @@ export async function createCourseRunAction(payload: CreateCourseRunPayload) {
   }
 
   const supabase = getSupabaseServerActionClient();
-  const { error } = await supabase.from("course_runs").insert({
+  const courseRunInsert: TablesInsert<"course_runs"> = {
     course_id: payload.courseId,
-    label: payload.label,
+    label: payload.label ?? null,
     access_start: new Date(payload.accessStart).toISOString(),
     access_end: payload.accessEnd ? new Date(payload.accessEnd).toISOString() : null,
     application_start: payload.applicationStart
@@ -79,7 +82,9 @@ export async function createCourseRunAction(payload: CreateCourseRunPayload) {
       : null,
     application_end: payload.applicationEnd ? new Date(payload.applicationEnd).toISOString() : null,
     enrollment_limit: payload.enrollmentLimit,
-  });
+  };
+
+  const { error } = await supabase.from("course_runs").insert(courseRunInsert);
 
   if (error) {
     return { error: "Dönem oluşturulamadı: " + error.message };
@@ -105,14 +110,16 @@ export async function createLessonAction(payload: CreateLessonPayload) {
   }
 
   const supabase = getSupabaseServerActionClient();
-  const { error } = await supabase.from("lessons").insert({
+  const lessonInsert: TablesInsert<"lessons"> = {
     course_id: payload.courseId,
     title: payload.title,
     video_url: payload.videoUrl,
-    content: payload.content,
+    content: payload.content ?? null,
     order_index: payload.orderIndex ?? 0,
     is_published: payload.isPublished,
-  });
+  };
+
+  const { error } = await supabase.from("lessons").insert(lessonInsert);
 
   if (error) {
     return { error: "Ders eklenemedi: " + error.message };
@@ -130,9 +137,14 @@ interface UpdateEnrollmentStatusPayload {
 
 export async function updateEnrollmentStatusAction({ enrollmentId, status }: UpdateEnrollmentStatusPayload) {
   const supabase = getSupabaseServerActionClient();
+  const enrollmentUpdate: TablesUpdate<"enrollments"> = {
+    status,
+    decided_at: new Date().toISOString(),
+  };
+
   const { error, data } = await supabase
     .from("enrollments")
-    .update({ status, decided_at: new Date().toISOString() })
+    .update(enrollmentUpdate)
     .eq("id", enrollmentId)
     .select("course_run_id")
     .single();
@@ -180,7 +192,7 @@ export async function applyToCourseAction({ courseId, courseRunId, receiptNo }: 
   const { data: runData, error: runError } = await supabase
     .from("course_runs")
     .select("course_id, access_start, access_end, application_start, application_end")
-    .eq("id", courseRunId)
+    .eq("id", courseRunId as Tables<"course_runs">["id"])
     .single();
 
   if (runError || !runData || runData.course_id !== courseId) {

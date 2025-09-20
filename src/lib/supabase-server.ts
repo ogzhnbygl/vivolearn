@@ -3,9 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
-type Client = SupabaseClient<Database>;
-
-type CookieStore = ReturnType<typeof cookies>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Client = SupabaseClient<any>;
 
 type CookieAdapter = NonNullable<Parameters<typeof createServerClient<Database>>>[2]["cookies"];
 
@@ -17,10 +16,16 @@ function getEnvOrThrow(key: string, value: string | undefined) {
   return value;
 }
 
-function createCookieAdapter(cookieStore: CookieStore, allowWrite: boolean): CookieAdapter {
+type CookieStoreMethods = {
+  getAll: () => { name: string; value: string }[];
+  set: (name: string, value: string, options?: Record<string, unknown>) => void;
+};
+
+function createCookieAdapter(allowWrite: boolean): CookieAdapter {
   return {
     getAll() {
-      return cookieStore.getAll();
+      const store = cookies() as unknown as CookieStoreMethods;
+      return store.getAll();
     },
     setAll(cookiesToSet) {
       if (!allowWrite) {
@@ -28,7 +33,8 @@ function createCookieAdapter(cookieStore: CookieStore, allowWrite: boolean): Coo
       }
 
       cookiesToSet.forEach(({ name, value, options }) => {
-        cookieStore.set(name, value, options);
+        const store = cookies() as unknown as CookieStoreMethods;
+        store.set(name, value, options);
       });
     },
   };
@@ -59,24 +65,22 @@ export function getSupabaseServiceRoleClient(): Client {
  * Server componentlarda (layout, page vb.) kullanılmalı. Cookie yazmaz.
  */
 export function getSupabaseServerComponentClient(): Client {
-  const cookieStore = cookies();
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-    cookies: createCookieAdapter(cookieStore, false),
-  });
+    cookies: createCookieAdapter(false),
+  }) as unknown as Client;
 }
 
 /**
  * Server action veya Route Handler içinde kullanılmalı. Cookie yazmayı destekler.
  */
 export function getSupabaseServerActionClient(): Client {
-  const cookieStore = cookies();
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-    cookies: createCookieAdapter(cookieStore, true),
-  });
+    cookies: createCookieAdapter(true),
+  }) as unknown as Client;
 }

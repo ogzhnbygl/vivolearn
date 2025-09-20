@@ -44,18 +44,22 @@ export function QuizAttemptForm({ quiz, courseRunId, lessonId, existingAttempt }
         setError(null);
         setStatusMessage(null);
         startTransition(async () => {
-          const result = await submitQuizAttemptAction({
+          const actionResult = await submitQuizAttemptAction({
             quizId: quiz.id,
             courseRunId,
             lessonId,
             answers,
           });
 
-          if (result.error) {
-            setError(result.error);
+          if ("error" in actionResult) {
+            setError(actionResult.error);
           } else {
-            setResult({ score: result.score, passed: result.passed });
-            setStatusMessage(result.passed ? "Tebrikler, quiz başarıyla tamamlandı." : "Quiz tekrar denemesi önerilir.");
+            setResult({ score: actionResult.score, passed: actionResult.passed });
+            setStatusMessage(
+              actionResult.passed
+                ? "Tebrikler, quiz başarıyla tamamlandı."
+                : "Quiz tekrar denemesi önerilir."
+            );
           }
         });
       }}

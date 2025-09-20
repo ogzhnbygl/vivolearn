@@ -59,7 +59,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     return null;
   }
 
-  return data;
+  return (data as Profile | null) ?? null;
 }
 
 export function hasRole(profile: Profile | null, roles: Profile["role"][]) {
