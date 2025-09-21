@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { Tables } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import Link from "next/link";
 
 interface CourseApplicationFormProps {
   courseId: string;
-  courseRuns: Tables<"course_runs">[];
+  courseRun: Tables<"course_runs"> | null;
   profile: Tables<"profiles"> | null;
   existingEnrollment: (Tables<"enrollments"> & { course_runs: Tables<"course_runs"> }) | null;
 }
@@ -27,7 +27,7 @@ function isApplicationOpen(run: Tables<"course_runs">) {
 
 export function CourseApplicationForm({
   courseId,
-  courseRuns,
+  courseRun,
   profile,
   existingEnrollment,
 }: CourseApplicationFormProps) {
@@ -35,12 +35,6 @@ export function CourseApplicationForm({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const openRuns = useMemo(() => courseRuns.filter((run) => isApplicationOpen(run)), [courseRuns]);
-
-  const [selectedRun, setSelectedRun] = useState<string>(
-    existingEnrollment?.course_run_id ?? openRuns[0]?.id ?? courseRuns[0]?.id ?? ""
-  );
 
   if (!profile) {
     return (
@@ -58,6 +52,22 @@ export function CourseApplicationForm({
               <Link href="/register">Kayıt Ol</Link>
             </Button>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!courseRun) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle>Başvuru Takvimi Bekleniyor</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm text-slate-600">
+          <p>
+            Bu kurs için başvuru ve erişim tarihleri henüz tanımlanmadı. Eğitmen takvimi belirledikten sonra
+            başvuru yapabilirsiniz.
+          </p>
         </CardContent>
       </Card>
     );
@@ -85,8 +95,8 @@ export function CourseApplicationForm({
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
           <p>
-            <span className="font-medium">Dahil olduğunuz dönem:</span> {" "}
-            {existingEnrollment.course_runs.label ?? "Güncel dönem"}
+            <span className="font-medium">Dahil olduğunuz takvim:</span> {" "}
+            {existingEnrollment.course_runs.label ?? "Güncel takvim"}
           </p>
           <p>
             <span className="font-medium">Başvuru zamanı:</span> {" "}
@@ -106,6 +116,16 @@ export function CourseApplicationForm({
     );
   }
 
+  const openForApplication = isApplicationOpen(courseRun);
+  const applicationWindow = courseRun.application_start
+    ? `${new Date(courseRun.application_start).toLocaleString("tr-TR")} - ${
+        courseRun.application_end ? new Date(courseRun.application_end).toLocaleString("tr-TR") : "Süre belirtilmedi"
+      }`
+    : "Başvuru tarihleri belirlenmedi";
+  const accessWindow = `${new Date(courseRun.access_start).toLocaleString("tr-TR")} - ${
+    courseRun.access_end ? new Date(courseRun.access_end).toLocaleString("tr-TR") : "Süre belirtilmedi"
+  }`;
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -113,11 +133,20 @@ export function CourseApplicationForm({
         {statusLabel && <p className="text-sm text-slate-600">{statusLabel}</p>}
       </CardHeader>
       <CardContent className="space-y-4 text-sm text-slate-600">
-        {openRuns.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-primary-200 bg-white/60 p-4">
-            Aktif başvuru dönemi bulunmuyor. Yeni dönem açıldığında bilgilendirileceksiniz.
+        <div className="rounded-lg border border-primary-100 bg-white/60 p-4 text-sm text-slate-600">
+          <p>
+            <span className="font-medium">Başvuru aralığı:</span> {applicationWindow}
           </p>
-        ) : (
+          <p>
+            <span className="font-medium">Erişim aralığı:</span> {accessWindow}
+          </p>
+          {typeof courseRun.enrollment_limit === "number" && (
+            <p>
+              <span className="font-medium">Kontenjan:</span> {courseRun.enrollment_limit}
+            </p>
+          )}
+        </div>
+        {openForApplication || existingEnrollment ? (
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -127,12 +156,11 @@ export function CourseApplicationForm({
 
               startTransition(async () => {
                 const formData = new FormData(event.currentTarget);
-                const courseRunId = formData.get("courseRunId") as string;
                 const receipt = formData.get("receiptNo") as string;
 
                 const result = await applyToCourseAction({
                   courseId,
-                  courseRunId,
+                  courseRunId: courseRun.id,
                   receiptNo: receipt,
                 });
 
@@ -144,22 +172,6 @@ export function CourseApplicationForm({
               });
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor="courseRunId">Dönem</Label>
-              <select
-                id="courseRunId"
-                name="courseRunId"
-                className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                value={selectedRun}
-                onChange={(event) => setSelectedRun(event.target.value)}
-              >
-                {openRuns.map((run) => (
-                  <option key={run.id} value={run.id}>
-                    {run.label ?? "Yeni dönem"} ({new Date(run.access_start).toLocaleDateString("tr-TR")})
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="receiptNo">Dekont Numarası</Label>
               <Input
@@ -177,6 +189,10 @@ export function CourseApplicationForm({
             {message && <p className="text-sm text-green-600">{message}</p>}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </form>
+        ) : (
+          <p className="rounded-lg border border-dashed border-primary-200 bg-white/60 p-4">
+            Başvuru süreci henüz açık değil. Takvimde belirtilen tarihler arasında başvuru yapabilirsiniz.
+          </p>
         )}
       </CardContent>
     </Card>

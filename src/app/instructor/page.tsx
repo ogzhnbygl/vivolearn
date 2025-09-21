@@ -54,9 +54,7 @@ export default async function InstructorDashboard() {
               (acc, run) => acc + run.enrollments.filter((en) => en.status === "approved").length,
               0
             );
-            const nextRun = course.course_runs
-              .slice()
-              .sort((a, b) => new Date(a.access_start).getTime() - new Date(b.access_start).getTime())[0];
+            const schedule = course.course_runs[0] ?? null;
 
             return (
               <Card key={course.id} className="h-full">
@@ -68,7 +66,7 @@ export default async function InstructorDashboard() {
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {nextRun ? formatDateRange(nextRun.access_start, nextRun.access_end) : "Takvim bekleniyor"}
+                    {schedule ? formatDateRange(schedule.access_start, schedule.access_end) : "Takvim bekleniyor"}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-slate-600">

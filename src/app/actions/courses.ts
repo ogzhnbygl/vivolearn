@@ -20,6 +20,11 @@ interface CreateCoursePayload {
   description?: string;
   coverImageUrl?: string;
   isPublished: boolean;
+  accessStart: string;
+  accessEnd?: string;
+  applicationStart: string;
+  applicationEnd?: string;
+  enrollmentLimit: number | null;
 }
 
 export async function createCourseAction(payload: CreateCoursePayload) {
@@ -30,6 +35,14 @@ export async function createCourseAction(payload: CreateCoursePayload) {
 
   if (!payload.title.trim()) {
     return { error: "Başlık zorunludur." };
+  }
+
+  if (!payload.accessStart) {
+    return { error: "Erişim başlangıç tarihi zorunludur." };
+  }
+
+  if (!payload.applicationStart) {
+    return { error: "Başvuru başlangıç tarihi zorunludur." };
   }
 
   const supabase = getSupabaseServerActionClient();
@@ -46,10 +59,32 @@ export async function createCourseAction(payload: CreateCoursePayload) {
     slug,
   };
 
-  const { error } = await supabase.from("courses").insert(courseInsert);
+  const { data: insertedCourses, error: courseError } = await supabase
+    .from("courses")
+    .insert(courseInsert)
+    .select("id")
+    .single();
 
-  if (error) {
-    return { error: "Kurs kaydedilemedi: " + error.message };
+  if (courseError || !insertedCourses) {
+    return { error: "Kurs kaydedilemedi: " + courseError?.message };
+  }
+
+  const courseId = insertedCourses.id;
+  const courseRunInsert: TablesInsert<"course_runs"> = {
+    course_id: courseId,
+    label: null,
+    access_start: new Date(payload.accessStart).toISOString(),
+    access_end: payload.accessEnd ? new Date(payload.accessEnd).toISOString() : null,
+    application_start: new Date(payload.applicationStart).toISOString(),
+    application_end: payload.applicationEnd ? new Date(payload.applicationEnd).toISOString() : null,
+    enrollment_limit: payload.enrollmentLimit,
+  };
+
+  const { error: runError } = await supabase.from("course_runs").insert(courseRunInsert);
+
+  if (runError) {
+    await supabase.from("courses").delete().eq("id", courseId);
+    return { error: "Takvim ayarlanamadı: " + runError.message };
   }
 
   revalidatePath("/instructor");
@@ -88,11 +123,72 @@ export async function createCourseRunAction(payload: CreateCourseRunPayload) {
   const { error } = await supabase.from("course_runs").insert(courseRunInsert);
 
   if (error) {
-    return { error: "Dönem oluşturulamadı: " + error.message };
+    return { error: "Takvim oluşturulamadı: " + error.message };
   }
 
   revalidatePath(`/instructor/courses/${payload.courseId}`);
   revalidatePath(`/courses/${payload.courseId}`);
+  return { success: true } as const;
+}
+
+interface UpdateCourseSchedulePayload {
+  courseId: string;
+  courseRunId: string;
+  accessStart: string;
+  accessEnd?: string;
+  applicationStart?: string;
+  applicationEnd?: string;
+  enrollmentLimit: number | null;
+}
+
+export async function updateCourseScheduleAction(payload: UpdateCourseSchedulePayload) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    return { error: "Giriş yapmalısınız." };
+  }
+
+  const supabase = getSupabaseServerActionClient();
+  const { data: course, error: courseError } = await supabase
+    .from("courses")
+    .select("instructor_id")
+    .eq("id", payload.courseId)
+    .single();
+
+  if (courseError || !course) {
+    return { error: "Kurs bilgisi alınamadı." };
+  }
+
+  if (course.instructor_id !== profile.id && profile.role !== "admin") {
+    return { error: "Bu kurs için yetkiniz yok." };
+  }
+
+  if (!payload.accessStart) {
+    return { error: "Erişim başlangıç tarihi zorunludur." };
+  }
+
+  const updates: TablesUpdate<"course_runs"> = {
+    access_start: new Date(payload.accessStart).toISOString(),
+    access_end: payload.accessEnd ? new Date(payload.accessEnd).toISOString() : null,
+    application_start: payload.applicationStart
+      ? new Date(payload.applicationStart).toISOString()
+      : null,
+    application_end: payload.applicationEnd ? new Date(payload.applicationEnd).toISOString() : null,
+    enrollment_limit: payload.enrollmentLimit,
+  };
+
+  const { error } = await supabase
+    .from("course_runs")
+    .update(updates)
+    .eq("id", payload.courseRunId)
+    .eq("course_id", payload.courseId);
+
+  if (error) {
+    return { error: "Takvim güncellenemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${payload.courseId}`);
+  revalidatePath(`/courses/${payload.courseId}`);
+  revalidatePath("/profile");
   return { success: true } as const;
 }
 
@@ -138,35 +234,59 @@ interface UpdateEnrollmentStatusPayload {
 
 export async function updateEnrollmentStatusAction({ enrollmentId, status }: UpdateEnrollmentStatusPayload) {
   const supabase = getSupabaseServerActionClient();
+
+  const { data: currentEnrollment, error: enrollmentFetchError } = await supabase
+    .from("enrollments")
+    .select("course_run_id, status")
+    .eq("id", enrollmentId)
+    .single();
+
+  if (enrollmentFetchError || !currentEnrollment) {
+    return { error: "Başvuru bulunamadı." };
+  }
+
+  const { data: courseRun, error: courseRunError } = await supabase
+    .from("course_runs")
+    .select("course_id, enrollment_limit")
+    .eq("id", currentEnrollment.course_run_id)
+    .single();
+
+  if (courseRunError || !courseRun) {
+    return { error: "Dönem bilgisi alınamadı." };
+  }
+
+  if (
+    status === "approved" &&
+    currentEnrollment.status !== "approved" &&
+    typeof courseRun.enrollment_limit === "number"
+  ) {
+    const { count: approvedCount } = await supabase
+      .from("enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("course_run_id", currentEnrollment.course_run_id)
+      .eq("status", "approved");
+
+    if ((approvedCount ?? 0) >= courseRun.enrollment_limit) {
+      return { error: "Kontenjan dolu olduğu için onay verilemez." };
+    }
+  }
+
   const enrollmentUpdate: TablesUpdate<"enrollments"> = {
     status,
     decided_at: new Date().toISOString(),
   };
 
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from("enrollments")
     .update(enrollmentUpdate)
-    .eq("id", enrollmentId)
-    .select("course_run_id")
-    .single();
+    .eq("id", enrollmentId);
 
   if (error) {
     return { error: "Başvuru güncellenemedi: " + error.message };
   }
 
-  if (data) {
-    const { data: courseRun } = await supabase
-      .from("course_runs")
-      .select("course_id")
-      .eq("id", data.course_run_id)
-      .single();
-
-    if (courseRun) {
-      revalidatePath(`/instructor/courses/${courseRun.course_id}`);
-      revalidatePath(`/courses/${courseRun.course_id}`);
-    }
-  }
-
+  revalidatePath(`/instructor/courses/${courseRun.course_id}`);
+  revalidatePath(`/courses/${courseRun.course_id}`);
   revalidatePath("/instructor/applications");
   revalidatePath("/profile");
   return { success: true } as const;
@@ -192,13 +312,22 @@ export async function applyToCourseAction({ courseId, courseRunId, receiptNo }: 
 
   const { data: runData, error: runError } = await supabase
     .from("course_runs")
-    .select("course_id, access_start, access_end, application_start, application_end")
+    .select(
+      "course_id, access_start, access_end, application_start, application_end, enrollment_limit"
+    )
     .eq("id", courseRunId as Tables<"course_runs">["id"])
     .single();
 
   if (runError || !runData || runData.course_id !== courseId) {
-    return { error: "Seçilen dönem bulunamadı." };
+    return { error: "Seçilen takvim bulunamadı." };
   }
+
+  const { data: existingEnrollment } = await supabase
+    .from("enrollments")
+    .select("id, status")
+    .eq("student_id", profile.id)
+    .eq("course_run_id", courseRunId)
+    .maybeSingle();
 
   const now = new Date();
   const appStart = runData.application_start ? new Date(runData.application_start) : new Date(runData.access_start);
@@ -209,7 +338,22 @@ export async function applyToCourseAction({ courseId, courseRunId, receiptNo }: 
     : null;
 
   if (appStart > now || (appEnd && now > appEnd)) {
-    return { error: "Başvuru dönemi dışında işlem yapılamaz." };
+    return { error: "Başvuru süresi dışında işlem yapılamaz." };
+  }
+
+  if (typeof runData.enrollment_limit === "number") {
+    const hasActiveEnrollment = existingEnrollment?.status !== "rejected" && !!existingEnrollment;
+    if (!hasActiveEnrollment) {
+      const { count: activeCount } = await supabase
+        .from("enrollments")
+        .select("id", { count: "exact", head: true })
+        .eq("course_run_id", courseRunId)
+        .neq("status", "rejected");
+
+      if ((activeCount ?? 0) >= runData.enrollment_limit) {
+        return { error: "Kontenjan dolu olduğu için başvuru alınamıyor." };
+      }
+    }
   }
 
   const { error } = await supabase

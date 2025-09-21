@@ -35,7 +35,7 @@ export default async function HomePage() {
       </section>
 
       <CourseSection title="Açık Kurslar" emptyText="Şu anda açık kurs bulunmuyor" courses={open} />
-      <CourseSection title="Yakında Başlayacak" emptyText="Yeni dönemler yakında yüklenecek" courses={upcoming} />
+      <CourseSection title="Yakında Başlayacak" emptyText="Yeni kurs takvimleri yakında yüklenecek" courses={upcoming} />
       <CourseSection title="Tamamlanmış Programlar" emptyText="Tamamlanmış kurs bulunmuyor" courses={past} />
     </Container>
   );
@@ -88,7 +88,7 @@ function CourseSection({ title, emptyText, courses }: CourseSectionProps) {
                       {course.instructor?.full_name ?? "Belirlenecek"}
                     </p>
                     <p>
-                      <span className="font-medium text-slate-800">Sonraki dönem:</span> {" "}
+                      <span className="font-medium text-slate-800">Erişim aralığı:</span> {" "}
                       {course.course_runs.length > 0
                         ? formatDateRange(
                             course.course_runs[0]?.access_start,

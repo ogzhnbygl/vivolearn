@@ -12,7 +12,7 @@ export default function NewCoursePage() {
         <CardHeader>
           <CardTitle>Kurs Detayları</CardTitle>
           <p className="text-sm text-slate-600">
-            Temel bilgileri doldurun. Daha sonra dersleri, quizleri ve dönemleri ekleyebilirsiniz.
+            Temel bilgileri doldurun. Ders ve quiz eklemelerinin yanı sıra kurs takvimini bu formdan yönetebilirsiniz.
           </p>
         </CardHeader>
         <CardContent>

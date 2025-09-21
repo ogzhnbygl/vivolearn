@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreateLessonForm } from "@/components/instructor/create-lesson-form";
-import { CreateCourseRunForm } from "@/components/instructor/create-course-run-form";
+import { UpdateCourseScheduleForm } from "@/components/instructor/update-course-schedule-form";
 import { ApplicationDecisionButtons } from "@/components/instructor/application-decision-buttons";
 import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
@@ -49,12 +49,12 @@ export default async function InstructorCoursePage({ params }: InstructorCourseP
     redirect("/instructor");
   }
 
-  const pendingEnrollments = course.course_runs.flatMap((run) =>
-    run.enrollments.filter((enrollment) => enrollment.status === "requested").map((enrollment) => ({
-      enrollment,
-      run,
-    }))
-  );
+  const courseRun = course.course_runs[0] ?? null;
+  const pendingEnrollments = courseRun
+    ? courseRun.enrollments
+        .filter((enrollment) => enrollment.status === "requested")
+        .map((enrollment) => ({ enrollment, run: courseRun }))
+    : [];
 
   return (
     <div className="space-y-8">
@@ -94,13 +94,39 @@ export default async function InstructorCoursePage({ params }: InstructorCourseP
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Yeni Dönem Oluştur</CardTitle>
+            <CardTitle>Kurs Takvimi</CardTitle>
             <p className="text-sm text-slate-600">
-              Başvuru ve erişim tarihlerini belirleyerek öğrenci kayıtlarını açın.
+              Başvuru ve erişim tarihlerini düzenleyerek öğrenci başvurularını yönetin.
             </p>
           </CardHeader>
-          <CardContent>
-            <CreateCourseRunForm courseId={course.id} />
+          <CardContent className="space-y-4">
+            {courseRun ? (
+              <>
+                <div className="rounded-lg border border-primary-100 bg-primary-50/50 p-4 text-sm text-primary-900">
+                  <p>
+                    <span className="font-medium">Başvuru:</span> {" "}
+                    {courseRun.application_start
+                      ? formatDateRange(courseRun.application_start, courseRun.application_end)
+                      : "Belirlenmedi"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Erişim:</span> {" "}
+                    {formatDateRange(courseRun.access_start, courseRun.access_end)}
+                  </p>
+                  {typeof courseRun.enrollment_limit === "number" && (
+                    <p>
+                      <span className="font-medium">Kontenjan:</span> {courseRun.enrollment_limit}
+                    </p>
+                  )}
+                </div>
+                <UpdateCourseScheduleForm courseId={course.id} courseRun={courseRun} />
+              </>
+            ) : (
+              <p className="rounded-lg border border-dashed border-primary-200 bg-white/60 p-4 text-sm text-slate-600">
+                Bu kurs için takvim henüz oluşturulmadı. Kursu yeniden oluşturarak veya destek ekibiyle
+                iletişime geçerek takvim oluşturun.
+              </p>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -151,42 +177,6 @@ export default async function InstructorCoursePage({ params }: InstructorCourseP
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-primary-900">Dönemler</h2>
-        {course.course_runs.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
-            Henüz dönem tanımlanmadı.
-          </p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {course.course_runs
-              .slice()
-              .sort((a, b) => new Date(a.access_start).getTime() - new Date(b.access_start).getTime())
-              .map((run) => (
-                <Card key={run.id}>
-                  <CardHeader>
-                    <CardTitle>{run.label ?? "Yeni dönem"}</CardTitle>
-                    <p className="text-sm text-slate-600">
-                      {formatDateRange(run.access_start, run.access_end)}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-slate-600">
-                    <p>
-                      <span className="font-medium">Başvuru penceresi:</span> {" "}
-                      {run.application_start
-                        ? formatDateRange(run.application_start, run.application_end)
-                        : "Belirlenmedi"}
-                    </p>
-                    <p>
-                      <span className="font-medium">Başvuru sayısı:</span> {run.enrollments.length}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-4">
         <h2 className="text-xl font-semibold text-primary-900">Bekleyen Başvurular</h2>
         {pendingEnrollments.length === 0 ? (
           <p className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
@@ -200,7 +190,7 @@ export default async function InstructorCoursePage({ params }: InstructorCourseP
                   <div>
                     <CardTitle>{enrollment.student.full_name ?? enrollment.student.email}</CardTitle>
                     <p className="text-sm text-slate-600">
-                      {run.label ?? "Dönem"} · Dekont: {enrollment.receipt_no}
+                      Takvim: {formatDateRange(run.access_start, run.access_end)} · Dekont: {enrollment.receipt_no}
                     </p>
                   </div>
                   <ApplicationDecisionButtons

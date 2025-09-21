@@ -20,15 +20,13 @@ export default async function CoursesPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold text-primary-900">Tüm Kurslar</h1>
         <p className="text-sm text-slate-600">
-          Fakülteler tarafından açılan teorik derslerin tamamı. Kayıt dönemleri, içerik ve eğitmen
+          Fakülteler tarafından açılan teorik derslerin tamamı. Başvuru takvimi, içerik ve eğitmen
           bilgileri aşağıdadır.
         </p>
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {courses.map((course) => {
-          const nextRun = course.course_runs
-            .slice()
-            .sort((a, b) => new Date(a.access_start).getTime() - new Date(b.access_start).getTime())[0];
+          const schedule = course.course_runs[0] ?? null;
 
           return (
             <Card key={course.id} className="h-full">
@@ -51,13 +49,16 @@ export default async function CoursesPage() {
                   </p>
                   <p>
                     <span className="font-medium">Takvim:</span> {" "}
-                    {nextRun
-                      ? formatDateRange(nextRun.access_start, nextRun.access_end)
+                    {schedule
+                      ? formatDateRange(schedule.access_start, schedule.access_end)
                       : "Takvim yakında"}
                   </p>
-                  <p>
-                    <span className="font-medium">Dönem sayısı:</span> {course.course_runs.length}
-                  </p>
+                  {schedule?.application_start && (
+                    <p>
+                      <span className="font-medium">Başvuru aralığı:</span> {" "}
+                      {formatDateRange(schedule.application_start, schedule.application_end)}
+                    </p>
+                  )}
                 </div>
                 <Button asChild variant="secondary">
                   <Link href={`/courses/${course.id}`}>Kurs Detayı</Link>
