@@ -49,10 +49,13 @@ interface CourseSectionProps {
 
 function CourseSection({ title, emptyText, courses }: CourseSectionProps) {
   return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between">
+    <section className="space-y-6 pb-6">
+      <div className="flex items-center justify-between gap-4">
         <h2 className="text-2xl font-semibold text-primary-900">{title}</h2>
-        <Link href="/courses" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+        <Link
+          href="/courses"
+          className="text-sm font-medium text-primary-600 transition hover:text-primary-700"
+        >
           Tümünü gör
         </Link>
       </div>
@@ -63,31 +66,44 @@ function CourseSection({ title, emptyText, courses }: CourseSectionProps) {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {courses.map((course) => (
-            <Card key={course.id} className="h-full">
-              <CardHeader>
-                <CardTitle>{course.title}</CardTitle>
-                <p className="text-sm text-slate-500">
-                  {course.summary ?? course.description?.slice(0, 120) ?? "Detaylar yakında"}
-                </p>
-              </CardHeader>
-              <CardContent className="flex h-full flex-col justify-between gap-6">
-                <div className="flex flex-col gap-2 text-sm text-slate-600">
-                  <p>
-                    <span className="font-medium">Sorumlu Eğitmen:</span> {" "}
-                    {course.instructor?.full_name ?? "Belirlenecek"}
+            <Link
+              key={course.id}
+              href={`/courses/${course.id}`}
+              className="group block h-full focus-visible:outline-none"
+              prefetch={false}
+            >
+              <Card className="h-full rounded-2xl border border-white/0 bg-white/80 shadow-md transition duration-200 group-hover:-translate-y-1 group-hover:border-primary-200 group-hover:bg-primary-50/90">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-primary-900">
+                    {course.title}
+                  </CardTitle>
+                  <p className="text-sm text-slate-500">
+                    {course.summary ?? course.description?.slice(0, 120) ?? "Detaylar yakında"}
                   </p>
-                  <p>
-                    <span className="font-medium">Sonraki dönem:</span> {" "}
-                    {course.course_runs.length > 0
-                      ? formatDateRange(course.course_runs[0]?.access_start, course.course_runs[0]?.access_end)
-                      : "Takvim yakında"}
-                  </p>
-                </div>
-                <Button asChild variant="secondary">
-                  <Link href={`/courses/${course.id}`}>Detayları Gör</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="flex h-full flex-col gap-4 text-sm text-slate-600">
+                  <div className="space-y-2">
+                    <p>
+                      <span className="font-medium text-slate-800">Sorumlu Eğitmen:</span> {" "}
+                      {course.instructor?.full_name ?? "Belirlenecek"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-800">Sonraki dönem:</span> {" "}
+                      {course.course_runs.length > 0
+                        ? formatDateRange(
+                            course.course_runs[0]?.access_start,
+                            course.course_runs[0]?.access_end
+                          )
+                        : "Takvim yakında"}
+                    </p>
+                  </div>
+                  <div className="mt-auto flex items-center gap-2 text-xs uppercase tracking-wide text-primary-600 transition group-hover:text-primary-700">
+                    Kurs detaylarını görüntüleyin
+                    <span aria-hidden>→</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
