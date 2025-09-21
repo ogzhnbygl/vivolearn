@@ -7,7 +7,9 @@ import {
   useState,
   useTransition,
   type Dispatch,
+  type ComponentType,
   type SetStateAction,
+  type SVGProps,
 } from "react";
 import {
   createCourseSectionAction,
@@ -23,6 +25,8 @@ import type { CourseSectionWithLessons } from "@/lib/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Icons } from "@/components/ui/icons";
+import { cn } from "@/lib/utils";
 import {
   DndContext,
   PointerSensor,
@@ -56,6 +60,34 @@ type ActiveAddState =
       mode: "select" | "lesson" | "quiz";
       lesson?: LocalLesson;
     };
+
+interface IconActionButtonProps {
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  onClick: () => void;
+  tone?: "default" | "danger";
+  disabled?: boolean;
+}
+
+function IconActionButton({ label, icon: Icon, onClick, tone = "default", disabled }: IconActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-md transition",
+        tone === "danger"
+          ? "text-red-600 hover:text-red-700 hover:bg-red-50"
+          : "text-slate-500 hover:text-primary-600 hover:bg-primary-50",
+        disabled && "pointer-events-none opacity-40"
+      )}
+      disabled={disabled}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
 
 export function CurriculumBuilder({ courseId, sections }: CurriculumBuilderProps) {
   const sensors = useSensors(useSensor(PointerSensor));
@@ -204,12 +236,13 @@ export function CurriculumBuilder({ courseId, sections }: CurriculumBuilderProps
                 courseId={courseId}
                 renamingSectionId={renamingSectionId}
                 onRenamingChange={setRenamingSectionId}
-              renamingLessonId={renamingLessonId}
-              onRenamingLessonChange={setRenamingLessonId}
-              activeAddContent={activeAddContent}
-              setActiveAddContent={setActiveAddContent}
-              onFeedback={setFeedback}
-            />
+                renamingLessonId={renamingLessonId}
+                onRenamingLessonChange={setRenamingLessonId}
+                activeAddContent={activeAddContent}
+                setActiveAddContent={setActiveAddContent}
+                onFeedback={setFeedback}
+                setLocalSections={setLocalSections}
+              />
             ))}
           </div>
         </SortableContext>
@@ -246,6 +279,7 @@ interface SortableSectionCardProps {
   activeAddContent: ActiveAddState;
   setActiveAddContent: Dispatch<SetStateAction<ActiveAddState>>;
   onFeedback: (message: string | null) => void;
+  setLocalSections: Dispatch<SetStateAction<LocalSection[]>>;
 }
 
 function SortableSectionCard({
@@ -259,6 +293,7 @@ function SortableSectionCard({
   activeAddContent,
   setActiveAddContent,
   onFeedback,
+  setLocalSections,
 }: SortableSectionCardProps) {
   const sortableSection = useSortableCard(section.id, "section");
   const { attributes, listeners, setNodeRef, style, isDragging } = sortableSection;
@@ -280,6 +315,9 @@ function SortableSectionCard({
           } else {
             onFeedback(null);
             onRenamingChange(null);
+            setLocalSections((prev) =>
+              prev.map((item) => (item.id === section.id ? { ...item, title } : item))
+            );
           }
         }}
         onDelete={() =>
@@ -289,6 +327,10 @@ function SortableSectionCard({
               onFeedback(response.error);
             } else {
               onFeedback(null);
+              setLocalSections((prev) => prev.filter((item) => item.id !== section.id));
+              setActiveAddContent((state) =>
+                state?.sectionId === section.id ? null : state
+              );
             }
           })
         }
@@ -314,6 +356,7 @@ function SortableSectionCard({
               onEdit={() =>
                 setActiveAddContent({ sectionId: section.id, mode: "lesson", lesson })
               }
+              setLocalSections={setLocalSections}
             />
           ))}
         </div>
@@ -439,12 +482,12 @@ function SectionHeader({
       </div>
       {!isRenaming && (
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => onRenamingChange(section.id)}>
-            Yeniden Adlandır
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onDelete}>
-            Sil
-          </Button>
+          <IconActionButton
+            label="Bölümü yeniden adlandır"
+            icon={Icons.rename}
+            onClick={() => onRenamingChange(section.id)}
+          />
+          <IconActionButton label="Bölümü sil" icon={Icons.trash} onClick={onDelete} tone="danger" />
         </div>
       )}
     </div>
@@ -460,6 +503,7 @@ interface SortableLessonRowProps {
   onRenamingChange: (id: string | null) => void;
   onFeedback: (message: string | null) => void;
   onEdit: () => void;
+  setLocalSections: Dispatch<SetStateAction<LocalSection[]>>;
 }
 
 function SortableLessonRow({
@@ -471,6 +515,7 @@ function SortableLessonRow({
   onRenamingChange,
   onFeedback,
   onEdit,
+  setLocalSections,
 }: SortableLessonRowProps) {
   const { attributes, listeners, setNodeRef, style, isDragging } = useSortableCard(lesson.id, "lesson", {
     sectionId,
@@ -532,29 +577,38 @@ function SortableLessonRow({
         </div>
         {!isRenaming && (
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" onClick={onEdit}>
-              Düzenle
-            </Button>
-           <Button size="sm" variant="ghost" onClick={() => onRenamingChange(lesson.id)}>
-             Yeniden Adlandır
-           </Button>
-           <Button
-             size="sm"
-             variant="ghost"
+            <IconActionButton label="Dersi düzenle" icon={Icons.edit} onClick={onEdit} />
+            <IconActionButton
+              label="Dersi yeniden adlandır"
+              icon={Icons.rename}
+              onClick={() => onRenamingChange(lesson.id)}
+            />
+            <IconActionButton
+              label="Dersi sil"
+              icon={Icons.trash}
+              tone="danger"
               onClick={() =>
                 startRowTransition(async () => {
-                  const response = await deleteLessonAction({ lessonId: lesson.id, courseId });
-                  if (response.error) {
-                    onFeedback(response.error);
-                  } else {
-                    onFeedback(null);
-                  }
-                })
-              }
-              disabled={isPending}
-            >
-              Sil
-            </Button>
+                const response = await deleteLessonAction({ lessonId: lesson.id, courseId });
+                if (response.error) {
+                  onFeedback(response.error);
+                } else {
+                  onFeedback(null);
+                  setLocalSections((prev) =>
+                    prev.map((sectionItem) =>
+                      sectionItem.id === sectionId
+                        ? {
+                            ...sectionItem,
+                            lessons: sectionItem.lessons.filter((item) => item.id !== lesson.id),
+                          }
+                        : sectionItem
+                    )
+                  );
+                }
+              })
+            }
+            disabled={isPending}
+          />
           </div>
         )}
       </div>

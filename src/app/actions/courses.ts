@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
-import { getSupabaseServerActionClient } from "@/lib/supabase-server";
+import {
+  getSupabaseServerActionClient,
+  getSupabaseServiceRoleClient,
+} from "@/lib/supabase-server";
 import { normalizeGoogleDriveUrl } from "@/lib/utils";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/database.types";
 
@@ -349,7 +352,7 @@ interface DeleteCourseSectionPayload {
 }
 
 export async function deleteCourseSectionAction({ sectionId, courseId }: DeleteCourseSectionPayload) {
-  const supabase = getSupabaseServerActionClient();
+  const supabase = getSupabaseServiceRoleClient();
   const { error } = await supabase
     .from("course_sections")
     .delete()
@@ -416,7 +419,7 @@ interface DeleteLessonPayload {
 }
 
 export async function deleteLessonAction({ lessonId, courseId }: DeleteLessonPayload) {
-  const supabase = getSupabaseServerActionClient();
+  const supabase = getSupabaseServiceRoleClient();
   const { error } = await supabase
     .from("lessons")
     .delete()

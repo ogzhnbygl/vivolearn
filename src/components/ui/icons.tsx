@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Edit2, Trash2, GripVertical, Book } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit2, Trash2, GripVertical, Book, TextCursorInput } from "lucide-react";
 
 export const Icons = {
   chevronUp: ChevronUp,
@@ -9,4 +9,5 @@ export const Icons = {
   trash: Trash2,
   drag: GripVertical,
   lesson: Book,
+  rename: TextCursorInput,
 };
