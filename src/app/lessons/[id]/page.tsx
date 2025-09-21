@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LessonProgressActions } from "@/components/lesson-progress-actions";
 import { getCurrentProfile } from "@/lib/auth";
 import { getLessonDetail, type LessonDetail } from "@/lib/lessons";
 import {
@@ -140,8 +139,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
   (progressRows ?? []).forEach((row) => {
     progressMap.set(row.lesson_id, row as Tables<"progress">);
   });
-
-  const currentProgress = progressMap.get(lesson.id) ?? null;
   const quiz = lesson.quizzes[0];
   const courseLessons = (lesson.course.lessons ?? [])
     .slice()
@@ -236,27 +233,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
               </p>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">İlerleme</h3>
-              <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-                <LessonProgressActions
-                  lessonId={lesson.id}
-                  courseRunId={typedEnrollment.course_run_id}
-                  initialState={{
-                    isCompleted: currentProgress?.is_completed ?? false,
-                    lastViewedAt: currentProgress?.last_viewed_at ?? null,
-                  }}
-                />
-                <div>
-                  <span className="font-medium text-slate-900">Erişim dönemi:</span> {" "}
-                  {formatDateRange(
-                    typedEnrollment.course_runs.access_start,
-                    typedEnrollment.course_runs.access_end
-                  )}
-                </div>
-              </div>
-            </section>
-
             {quiz ? (
               <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -284,28 +260,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
                 Bu ders için quiz henüz tanımlanmadı.
               </section>
             )}
-
-            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">Kurs Bilgileri</h3>
-              <dl className="mt-4 grid gap-4 text-sm text-slate-600 md:grid-cols-2">
-                <div>
-                  <dt className="font-medium text-slate-900">Kurs</dt>
-                  <dd>{lesson.course.title}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-900">Ders sayısı</dt>
-                  <dd>{courseLessons.length}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-900">Eğitmen</dt>
-                  <dd>{lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-slate-900">Durumunuz</dt>
-                  <dd>{typedEnrollment.status === "approved" ? "Onaylandı" : "Beklemede"}</dd>
-                </div>
-              </dl>
-            </section>
 
             <section className="lg:hidden">
               <h3 className="mb-4 text-lg font-semibold text-slate-900">Kurs içeriği</h3>
