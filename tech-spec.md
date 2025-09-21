@@ -1,139 +1,158 @@
 # VivoLearn — Teknik ve Mimari Şartname
 
-## 1. Sistem Genel Bakışı
-VivoLearn, Next.js 15 App Router ile inşa edilmiş bir web uygulaması olup Supabase PostgreSQL veritabanı ve Auth servisleriyle çalışır. Uygulama, server komponentleri ve server action'lar üzerinden Supabase'e doğrudan bağlanır; ek bir API katmanı kullanılmaz. RLS (Row Level Security) politikaları uygulama mantığını tamamlayarak rol bazlı erişim kontrolü sağlar.
+## 1. Mimari Genel Bakış
+VivoLearn, Next.js 15 App Router üzerine kurulu, Supabase PostgreSQL ve Auth servisleriyle bütünleşik çalışan bir web uygulamasıdır. Mimari, server-first yaklaşımı sayesinde Next.js Server Actions üzerinden doğrudan Supabase'e bağlanır; ek bir backend katmanı gerektirmez.
 
-### 1.1 Mantıksal Mimari
 ```mermaid
 graph TD
-  subgraph Client
-    A[Next.js App Router] --> B[React 19 Componentleri]
-    B --> C[Client Components]
-    B --> D[Server Components]
+  subgraph İstemci (Browser)
+    UI[React 19 Client Components]
+    Router[Next.js Route Segments]
   end
-  D -->|Server Actions| E[Supabase REST]
-  C -->|Browser Client| E
+  subgraph Sunucu (Vercel Edge/Node)
+    SC[Server Components]
+    SA[Server Actions]
+  end
   subgraph Supabase
-    E --> F[(PostgreSQL)]
-    E --> G[Auth Service]
-    F --> H[RLS Policies]
+    API[Supabase REST & RPC]
+    DB[(PostgreSQL)]
+    Auth[Auth & RLS]
+    Storage[Storage (opsiyonel)]
   end
+  UI --> Router
+  Router --> SC
+  SC --> SA
+  SA --> API
+  API --> DB
+  API --> Auth
 ```
 
-## 2. Modüller ve Sorumluluklar
-| Modül | Sorumluluk | Önemli Dosyalar |
-|-------|------------|-----------------|
-| **Kimlik** | Supabase session yönetimi, profil sorguları | `src/lib/auth.ts`, `src/app/actions/auth.ts` |
-| **Kurs Yönetimi** | Kurs, dönem, ders CRUD, başvuru akışı | `src/app/actions/courses.ts`, `src/app/instructor/...` |
-| **Quiz** | Quiz oluşturma, soru/şık yönetimi, öğrenci denemeleri | `src/app/actions/quiz.ts`, `src/components/quiz/*` |
-| **İlerleme** | Ders tamamlama işaretleme ve profil gösterimi | `src/app/actions/progress.ts`, `src/app/profile/page.tsx` |
-| **Admin** | Rol yönetimi, kullanıcı listesi | `src/app/actions/admin.ts`, `src/app/admin/users/page.tsx` |
-| **UI Katmanı** | Shadcn tabanlı komponentler, container/layout bileşenleri | `src/components/ui/*`, `src/components/layout/container.tsx` |
+### 1.1 Ortamlar
+| Ortam | Açıklama | Ana Kullanım |
+|-------|----------|--------------|
+| Development | Yerel Next.js sunucusu, Supabase projesi veya `supabase start` ile lokal eşleniği | Geliştirme ve manuel test |
+| Preview | Vercel preview deploy'ları | PR doğrulama |
+| Production | Vercel production, yönetilen Supabase instance | Canlı kullanım |
 
-## 3. Veri Modeli
-Veri modeli `supabase/migrations/0001_init.sql` dosyasında tanımlıdır. Temel tablolar:
-- `profiles (id, email, full_name, role)` — Auth kullanıcılarına bağlı profil kayıtları.
-- `courses (id, instructor_id, title, slug, summary, is_published)` — Kurs metadata'sı.
-- `course_runs (course_id, access_start/end, application_start/end, enrollment_limit)` — Kurs dönemleri.
-- `lessons (course_id, title, video_url, order_index, is_published)` — Teorik ders içerikleri.
-- `enrollments (student_id, course_run_id, status, receipt_no)` — Başvuru ve kayıt durumu.
-- `progress (student_id, course_run_id, lesson_id, is_completed)` — Ders tamamlama bilgisi.
-- `quizzes`, `quiz_questions`, `quiz_options`, `quiz_attempts` — Quiz altyapısı.
+### 1.2 Yapı Taşları
+- **İstemci**: React client component'leri form validasyonu, toast bildirimleri ve interaktif bileşenlerden sorumludur.
+- **Sunucu**: Server components ve server actions, veri çekme, mutasyon ve RLS kontrollü sorguları yürütür.
+- **Veritabanı**: Supabase PostgreSQL, UUID tabanlı şema ve RLS politikaları ile güvenliği sağlar.
 
-**İlişkiler**
-- `courses.instructor_id → profiles.id`
-- `course_runs.course_id → courses.id`
-- `lessons.course_id → courses.id`
-- `enrollments.course_run_id → course_runs.id`
-- `progress` ve `quiz_attempts` tabloları öğrenci ve ders/quiz ile üçlü benzersiz kısıtlar içerir.
+## 2. Modül ve Katman Sorumlulukları
+| Modül | Sorumluluk | Öne Çıkan Dosyalar |
+|-------|------------|--------------------|
+| **Kimlik** | Oturum açma/kayıt, profil eşleştirme, session yönetimi | `src/app/login`, `src/app/register`, `src/app/actions/auth.ts`, `src/lib/auth.ts` |
+| **Kurs Kataloğu** | Kursları durum bazlı listeleme, detay ekranı, slug yönetimi | `src/app/page.tsx`, `src/app/courses`, `src/lib/courses.ts` |
+| **Başvuru & Dönem** | Başvuru formu, eğitmen onayları, kontenjan kontrolü | `src/components/course-application-form.tsx`, `src/app/actions/courses.ts`, `supabase/migrations/0001_init.sql` |
+| **Ders & İlerleme** | Video embed, ders tamamlama, ilerleme kaydı | `src/app/lessons`, `src/components/lesson-progress-actions.tsx`, `src/app/actions/progress.ts` |
+| **Quiz** | Quiz, soru ve seçenek CRUD'u, öğrenci denemeleri | `src/app/actions/quiz.ts`, `src/components/quiz`, `supabase` quiz tabloları |
+| **Admin Paneli** | Rol atama, kullanıcı listesi, sistem görünürlüğü | `src/app/admin`, `src/app/actions/admin.ts`, `src/components/admin` |
+| **Eğitmen Paneli** | Kurs/ders/quiz yönetimi için özel ekranlar | `src/app/instructor`, `src/components/instructor` |
+| **UI Katmanı** | Ortak bileşenler, grid/typografi, tema | `src/components/ui`, `src/components/layout` |
 
-### 3.1 ER Diyagram Önerisi
-Projede henüz çizim bulunmamaktadır; Lucidchart veya DBML kullanılarak aşağıdaki şema oluşturulmalıdır:
-```
-profiles 1--* courses (instructor_id)
-courses 1--* course_runs
-courses 1--* lessons
-course_runs 1--* enrollments
-course_runs 1--* progress
-lessons 1--* quizzes 1--* quiz_questions 1--* quiz_options
-quizzes 1--* quiz_attempts
-```
+## 3. Veri Modeli ve Şema
+Veri modeli `supabase/migrations/0001_init.sql` dosyasında tanımlanmıştır.
+
+### 3.1 Ana Tablolar
+| Tablo | Amaç | Önemli Alanlar |
+|-------|------|----------------|
+| `profiles` | Auth kullanıcılarına ait profil ve rol yönetimi | `role`, `full_name`, `avatar_url` |
+| `courses` | Kurs metadata'sı ve eğitmen ilişkisi | `instructor_id`, `slug`, `is_published` |
+| `course_runs` | Dönem bazlı kayıt penceresi ve erişim tarihleri | `access_start`, `application_end`, `enrollment_limit` |
+| `lessons` | Ders içerikleri, video URL'si ve sıralama | `order_index`, `is_published`, `content` |
+| `enrollments` | Öğrenci başvuru kayıtları ve statüleri | `status`, `receipt_no`, `decided_at` |
+| `progress` | Ders tamamlama verileri | `is_completed`, `completed_at` |
+| `quizzes`, `quiz_questions`, `quiz_options`, `quiz_attempts` | Quiz kurgusu ve öğrenci yanıtları | `passing_score`, `answers (jsonb)` |
+
+### 3.2 RLS Politikaları
+- Tüm tablolar RLS ile korunur; roller `student`, `instructor`, `admin` olarak tanımlıdır.
+- Öğrenciler sadece kendilerine ait `enrollments`, `progress` ve `quiz_attempts` kayıtlarını görebilir.
+- Eğitmenler sadece sahibi oldukları kurslara bağlı kayıtları listeleyebilir/güncelleyebilir.
+- Admin kullanıcılar tüm tablolara genişletilmiş erişime sahiptir.
+
+### 3.3 Tip Tanımları
+- `src/lib/database.types.ts` dosyası Supabase tarafından üretilmiş TypeScript tiplerini içerir.
+- Server actions ve lib fonksiyonları bu tipleri kullanarak tür güvenliğini sağlar.
 
 ## 4. Uygulama Akışları
-### 4.1 Öğrenci Başvuru Akışı
-1. Öğrenci kurs detay sayfasını açar (`/courses/[id]`).
-2. Server component, öğrenci profilini ve mevcut kayıtlarını Supabase'den çeker.
-3. Form gönderimi `applyToCourseAction` server action'ı ile yapılır.
-4. Action, başvuru penceresi doğrulamalarını gerçekleştirir, `enrollments` tablosuna UPSERT eder.
-5. Başarılı işlem sonrası ilgili sayfa segmentleri `revalidatePath` ile yeniden oluşturulur.
+### 4.1 Server Action Yaşam Döngüsü
+1. İstemci formu veya buton aksiyonunu tetikler.
+2. Server action giriş verilerini doğrular (Zod veya manuel kontroller).
+3. `createServerClient` (`src/lib/supabase-server.ts`) ile Supabase oturumu oluşturulur.
+4. RLS politikalarına uygun sorgu veya mutasyon yapılır.
+5. Başarılı işlem sonrası `revalidatePath` ile ilgili segment yeniden oluşturulur.
 
-### 4.2 Ders Erişimi
-1. Öğrenci `/lessons/[id]` sayfasına gider.
-2. Server component, ders detayını (`getLessonDetail`) ve öğrencinin onaylı run'ını kontrol eder.
-3. Erişim penceresi dışında ise uyarı ekranı gösterilir; aksi halde video embed ve ders listesi render edilir.
-4. İlerleme güncellemesi `updateLessonProgressAction` üzerinden yapılır.
+### 4.2 Örnek Akış: Başvurunun Onaylanması
+```mermaid
+sequenceDiagram
+  participant Student
+  participant NextJS as Next.js Server Action
+  participant Supabase
+  Student->>NextJS: Başvuru formunu gönderir
+  NextJS->>Supabase: enrollments tablosuna insert
+  Supabase-->>NextJS: kayıt (requested)
+  Instructor->>NextJS: Onay butonuna tıklar
+  NextJS->>Supabase: status=approved, decided_at=now()
+  Supabase-->>NextJS: güncellenmiş kayıt
+  NextJS->>Student: Toast + sayfa yenileme
+```
 
-### 4.3 Quiz Gönderimi
-1. Öğrenci quiz formunu doldurur, client component state'de yanıtlar tutulur.
-2. `submitQuizAttemptAction` doğrulama yapar: onaylı kayıt, tüm sorular, doğru seçenek ID'si.
-3. Puan `correct/total * 100` formülü ile hesaplanır, `quiz_attempts` tablosuna UPSERT edilir.
-4. Sonuç bilgisi istemciye döner, progress ve profil sayfaları revalidate edilir.
+## 5. API ve Entegrasyon Tasarımı
+- Harici REST API yoktur; tüm işlevler server actions üzerinden yürütülür.
+- Gerekli durumlarda Supabase'in otomatik REST uç noktalarına hizmet rol anahtarı ile erişilebilir.
+- Gelecekte üçüncü taraf entegrasyonlar (ödeme, LMS) için `src/app/api` altında EDGE route'ları eklenmesi planlanmaktadır.
 
-## 5. Server Action ve API Tasarımı
-| Action | Dosya | Amaç | Giriş doğrulamaları |
-|--------|-------|------|----------------------|
-| `signInAction` | `actions/auth.ts` | Oturum açma | E-posta/şifre zorunlu |
-| `registerAction` | `actions/auth.ts` | Kayıt ve profil oluşturma | Şifre ≥ 6 karakter |
-| `createCourseAction` | `actions/courses.ts` | Kurs oluşturma | Eğitmen/admin rolü, başlık zorunlu |
-| `createCourseRunAction` | `actions/courses.ts` | Dönem ekleme | Erişim başlangıcı zorunlu |
-| `createLessonAction` | `actions/courses.ts` | Ders ekleme | Başlık + video URL |
-| `applyToCourseAction` | `actions/courses.ts` | Öğrenci başvurusu | Başvuru penceresi kontrolü |
-| `updateEnrollmentStatusAction` | `actions/courses.ts` | Başvuru onayı/ret | Eğitmen sahiplik kontrolü |
-| `updateLessonProgressAction` | `actions/progress.ts` | Ders tamamlama | Giriş yapan öğrenci |
-| `createQuiz*` & `submitQuizAttemptAction` | `actions/quiz.ts` | Quiz CRUD & cevaplama | Rol, benzersiz quiz, cevap doğrulama |
-| `updateUserRoleAction` | `actions/admin.ts` | Rol güncelleme | Admin doğrulaması |
+### 5.1 Server Action Örnekleri
+| Action | Girdi | Doğrulamalar | Çıktı |
+|--------|-------|--------------|-------|
+| `registerAction` | `{ email, password, fullName }` | E-posta formatı, şifre ≥ 6 | Supabase Auth kullanıcı kaydı + profil upsert |
+| `createCourseAction` | Kurs metadata'sı | Rol (`instructor`/`admin`), başlık zorunlu | Yeni kurs ID'si |
+| `applyToCourseAction` | `{ courseRunId, receiptNo }` | Başvuru penceresi, benzersiz başvuru | Başvuru kaydı |
+| `submitQuizAttemptAction` | `{ quizId, answers[] }` | Onaylı kayıt, tüm sorular cevaplandı | Puan yüzdesi |
+| `updateUserRoleAction` | `{ userId, role }` | Admin rolü doğrulaması | Güncellenen profil |
 
-Supabase REST API doğrudan son kullanıcılara açılmaz; tüm kritik işlemler server action'lar üzerinden yürütülür. İhtiyaç halinde Supabase'in otomatik REST endpoint'leri kurum içi entegrasyonlar için kullanılabilir.
+## 6. Kullanılan Kütüphaneler ve Gerekçeler
+- **`@supabase/ssr`**: Next.js server/component ortamlarda Supabase oturumlarını güvenli şekilde paylaşmak için.
+- **`@dnd-kit`**: Ders ve soru sıralamalarını sürükle-bırak ile yönetmek için hafif ve erişilebilir bir çözüm.
+- **Tailwind CSS 4**: Tasarım sistemi oluşturmayı hızlandırır, düşük bakım maliyeti sağlar.
+- **`date-fns`**: Tarih aralığı, başvuru penceresi ve zaman damgası formatlama ihtiyaçları için.
+- **`lucide-react`**: Tutarlı ve hafif ikon seti; kurumsal temalara uygun.
 
-## 6. Teknoloji Seçimleri ve Gerekçeler
-- **Next.js 15 App Router**: Server-first mimari, route segmentleri, React 19 uyumluluğu.
-- **Supabase**: PostgreSQL + Auth + RLS kombinasyonu, minimal backend kodu ve hızlı prototipleme.
-- **Tailwind CSS 4**: Tasarım sistemine hız kazandırır, üniversite renk paletine kolay uyum sağlar.
-- **Server Actions**: API Routes yerine doğrudan async function çağrıları ile içeride veri güncelleme.
-- **UUID Anahtarlar**: Dağıtık sistemlerde benzersizlik sağlar, Supabase `gen_random_uuid` kullanır.
+## 7. Konfigürasyon ve Gizli Bilgiler
+| Değişken | Açıklama | Kapsam |
+|----------|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase proje URL'si | İstemci + sunucu |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon anahtar; istemci sorguları için | İstemci + sunucu |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yalnızca server action'larda kullanılan yetkili anahtar | Sunucu |
+| (Opsiyonel) `SUPABASE_DB_PASSWORD` | Yerel Supabase instance için | Yerel |
 
-## 7. Dağıtım, Altyapı ve CI/CD
-- **Ortamlar**: `development` (geliştirme), `preview` (Vercel preview), `production`.
-- **Env Değişkenleri**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-- **Dağıtım**: Vercel ile otomatik; build aşamasında `next build` çalışır.
-- **Veritabanı**: Supabase yönetimli PostgreSQL; migration'lar SQL dosyalarıyla sürümlenir.
-- **CI Önerisi**: GitHub Actions ile `npm ci`, `npm run lint`, `npm run build` adımlarını doğrulayan pipeline.
+- Gizli anahtarlar Vercel "Environment Variables" üzerinden yönetilmeli; preview ve production ortamlarında ayrı değerler kullanılmalıdır.
 
-## 8. Güvenlik, Erişim Kontrolü ve Uyum
-- RLS politikaları, sahiplik ve rol bazlı kontrollerle tüm CRUD işlemlerini sınırlar.
-- Hizmet rol anahtarı yalnızca server action'larda (ör. profil upsert) kullanılır.
-- Admin ve Eğitmen panelleri server component guard'larıyla korunur (`redirect`).
-- Quiz ve ders erişimi zaman penceresi kontrolleri ile ek olarak sınırlandırılmıştır.
-- Şifreler Supabase Auth tarafından hash'lenir; uygulama düzeyinde saklanmaz.
+## 8. Dağıtım ve Operasyon
+### 8.1 Vercel
+- Deploy pipeline'ı `npm install`, `npm run build` aşamalarını otomatik çalıştırır.
+- ISR kullanılmadığı için route segmentleri her istekte render edilir; gelecekte seçili sayfalar için caching değerlendirilebilir.
 
-## 9. Gözlemlenebilirlik ve Loglama
-- Server component ve action'larda kritik Supabase hataları `console.error` ile loglanır; Vercel/Edge fonksiyon loglarına yansır.
-- Ek loglama gereksinimi doğarsa Sentry veya Supabase Logflare entegrasyonu önerilir.
-- Kullanıcıya gösterilen hata mesajları Türkçe ve aksiyonu yönlendiricidir.
+### 8.2 Supabase
+- SQL migration dosyaları sıralı olarak `supabase/migrations` altında tutulur.
+- Prod veritabanına migration uygulamadan önce staging ortamında test edilmesi önerilir.
+- Loglama ve metrikler Supabase dashboard üzerinden izlenebilir.
 
-## 10. Test Stratejisi (Planlı)
-- **Birim Testleri**: Yardımcı fonksiyonlar (`formatDateRange`, slugify) için Jest ile testler planlanmalıdır.
-- **Entegrasyon Testleri**: Playwright veya Cypress ile temel akışlar (kayıt, başvuru, quiz) otomasyona alınabilir.
-- **Veritabanı Testleri**: Supabase test projesi üzerinde migration ve RLS senaryoları doğrulanmalıdır.
+### 8.3 İzleme ve Uyarı
+- Şu anda yalnızca `console.error` logları mevcut; Vercel Log Drains veya Sentry entegrasyonu önerilir.
+- Kritik server actions için ölçümler (`duration`, `failure count`) ileride OpenTelemetry ile toplanabilir.
 
-## 11. Ölçeklenebilirlik ve Dayanıklılık
-- Supabase, otomatik ölçeklenen PostgreSQL örnekleri sağlar; büyük çaplı kullanımda read replica ve caching (Edge Functions) değerlendirilebilir.
-- Next.js tarafında ISR veya route segment caching henüz kullanılmıyor; katalog sayfaları için future work olarak planlanabilir.
-- Video dağıtımı Google Drive ile sınırlıdır; bant genişliği sorunları yaşanırsa CDN tabanlı çözüm devreye alınmalıdır.
+## 9. Ölçeklendirme ve Performans
+- PostgreSQL indeksleri (`course_runs.course_id`, `enrollments.student_id`) migration dosyasında tanımlanmıştır.
+- Yoğun trafik dönemlerinde Supabase read replica ve bölgesel (Region) seçimleri gözden geçirilmelidir.
+- Next.js tarafında streaming server components ve partial revalidation ileride performansı artırmak için kullanılabilir.
+- Video servisi Google Drive olduğu için yoğun kullanımda bant genişliği sorunu yaşanabilir; CDN tabanlı çözüme geçiş roadmap'tedir.
 
-## 12. Bilinen Sınırlamalar & Gelecek Çalışmalar
-- Ödeme doğrulaması manuel dekont numarası ile yapılmaktadır; entegrasyon planlanmalıdır.
-- Ders içerikleri için revizyon yönetimi bulunmuyor; versiyonlama eklenmesi önerilir.
-- Quizlerde soru bankası ve rasgeleleştirme desteği yoktur.
-- Mobil cihazlarda video oyuncusu ileri sarma engeli uygulanmamaktadır; gelecek sprint'te ele alınmalıdır.
+## 10. Gelecekte Planlanan İşler ve Bilinen Sınırlamalar
+- Ödeme/dekont doğrulaması için banka API entegrasyonu.
+- Quiz soru bankası, randomizasyon ve zamanlayıcı modülleri.
+- Ders içerikleri için versiyonlama ve değişiklik geçmişi takibi.
+- Supabase Storage veya harici CDN ile video yönetiminin kurumsal standartlara taşınması.
+- E2E test otomasyonu (Playwright) ve veri tohumlama komutlarının eklenmesi.
 

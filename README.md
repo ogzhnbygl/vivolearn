@@ -1,56 +1,61 @@
 # VivoLearn
 
+VivoLearn, İstanbul Medeniyet Üniversitesi'nin teorik derslerini dijital ortama taşıyarak öğrencilerin video içeriklere erişmesini, quiz çözmesini ve ilerlemesini takip etmesini sağlayan tam entegre bir öğrenme platformudur. Eğitmenler ders ve dönem planlarını yönetir, yöneticiler rol tabanlı yetkilendirmeyi kontrol eder, öğrenciler ise onaylanan başvuruları sayesinde ders içeriklerine ulaşır.
+
+## İçindekiler
+- [Genel Bakış](#genel-bakış)
+- [Ana Özellikler](#ana-özellikler)
+- [Kullanılan Teknolojiler](#kullanılan-teknolojiler)
+- [Kurulum Adımları](#kurulum-adımları)
+- [Uygulamayı Çalıştırma](#uygulamayı-çalıştırma)
+- [Dağıtım Stratejileri](#dağıtım-stratejileri)
+- [Kullanım Örnekleri](#kullanım-örnekleri)
+- [Katkı Rehberi](#katkı-rehberi)
+- [Lisans](#lisans)
+
 ## Genel Bakış
-VivoLearn, Medeniyet Üniversitesi teorik derslerinin dijital ortamda yönetilmesi için geliştirilen bir öğrenme platformudur. Öğrenciler çevrim içi derslere erişip quiz çözer, eğitmenler içerik ile dönemleri tasarlar, yöneticiler ise yetkilendirme ve kalite kontrol süreçlerini yürütür. Uygulama Next.js 15 App Router mimarisi, Supabase tabanlı kimlik doğrulama ve rol tabanlı erişim (RLS) politikaları ile tam entegre bir deneyim sunar.
+- Next.js 15 App Router ve Supabase PostgreSQL üzerine kurulu, server-first yaklaşımını benimseyen bir web uygulamasıdır.
+- Üç ana kullanıcı rolü (öğrenci, eğitmen, yönetici) için kişiselleştirilmiş paneller sunar.
+- Row Level Security (RLS) politikaları ile veri gizliliğini uygulama seviyesinde korur.
+- Google Drive üzerinden gömülü video akışı ile MVP ihtiyacını karşılayacak şekilde tasarlanmıştır; Mux/Bunny gibi sağlayıcılara geçişe hazırdır.
 
 ## Ana Özellikler
-- **Kurs kataloğu ve dönem yönetimi**: Yayında olan kurslar, geçmiş dönemler ve yaklaşan programlar tek ekranda listelenir.
-- **Başvuru ve onay süreci**: Öğrenciler dekont numarası ile kurs başvurusu yapar, eğitmenler başvuruları değerlendirir ve kontenjan yönetimi gerçekleştirir.
-- **Ders izleme ve ilerleme takibi**: Google Drive üzerinden gömülü video oynatıcı, ders tamamlama işaretleme ve otomatik ilerleme kaydı sunar.
-- **Quiz altyapısı**: Eğitmenler soru ve seçenekler ekleyerek quiz oluşturur, öğrenciler tek girişte quiz tamamlar ve başarı durumunu görür.
-- **Rol tabanlı paneller**: Öğrenciler için profil & ilerleme, eğitmenler için kurs/quiz yönetimi, yöneticiler için rol atama ekranları bulunur.
-- **Supabase RLS güvenliği**: Tüm veri erişimi kullanıcı rolü, sahiplik ve dönem erişim pencereleri ile kısıtlanır.
+- **Kurs kataloğu**: Yayındaki, yaklaşan ve tamamlanan kursları durum bazlı listeler.
+- **Başvuru süreci**: Öğrenciler dekont numarasıyla başvuru yapar; eğitmenler kontenjan ve uygunluk doğrulaması yaparak onaylar.
+- **Ders akışı**: Video oynatma, ders tamamlama işaretleme, quiz erişim kilidi ve ilerleme kaydı.
+- **Quiz yönetimi**: Çoktan seçmeli sorular, doğru seçenek işaretleme, süre/passing score tanımları.
+- **Rol tabanlı paneller**: Öğrenci profil ekranı, eğitmen kurs yönetimi, admin rol atama ve sistem görünürlüğü.
+- **Supabase RLS**: Ders, başvuru, quiz ve ilerleme verilerinin rol bazlı filtrelenmesi.
 
-## Mimarinin Kısa Özeti
-```
-İstemci: Next.js 15 App Router (React 19, server & client component mix)
-Sunucu: Next.js Server Actions + Supabase REST
-Veritabanı: Supabase PostgreSQL + Row Level Security
-Depolama: Google Drive embed (MVP), ileri aşamada Mux/Bunny entegrasyonuna hazır
-Dağıtım: Vercel (Next.js) + Supabase (DB & Auth)
-```
+## Kullanılan Teknolojiler
+**Uygulama Çatısı**
+- Next.js 15 (App Router, Server Actions)
+- React 19 + TypeScript 5
 
-## Teknoloji Yığını
-- **Uygulama**: Next.js 15, React 19, TypeScript, App Router, Server Actions
-- **UI**: Tailwind CSS 4, kurumsal temalı shadcn-türevi bileşen seti
-- **Veri & Auth**: Supabase (PostgreSQL, Auth, RLS, Edge functions opsiyonel)
-- **Durum Yönetimi**: Yerel component state + Server Actions üzerinden veri güncelleme
-- **Araçlar**: ESLint 9, TypeScript 5, date-fns, clsx
+**Veri ve Kimlik Doğrulama**
+- Supabase PostgreSQL
+- Supabase Auth (email/şifre), Row Level Security
 
-## Dizin & Modül Yapısı
-```
-src/
-  app/
-    (route segmentleri, server actions ve rol tabanlı paneller)
-  components/
-    admin/        # Yönetici arayüz bileşenleri
-    auth/         # Giriş/Kayıt formları
-    instructor/   # Eğitmen özel formları (kurs, ders, quiz)
-    quiz/, ui/, layout/
-  lib/
-    auth.ts       # Supabase session & profil yardımcıları
-    courses.ts    # Kurs sorguları ve sınıflandırma yardımcıları
-    lessons.ts    # Ders+quiz detay sorguları
-    supabase-*    # Server/Browser Supabase client factory'leri
-supabase/
-  migrations/0001_init.sql  # PostgreSQL şema + RLS politikaları
-```
+**Arayüz ve UX**
+- Tailwind CSS 4 ve kurumsal tema bileşenleri
+- shadcn türevi bileşen kütüphanesi, Radix UI primitives
+- `@dnd-kit` ile sürükle-bırak sıralama
+- `lucide-react` ikon seti
 
-## Kurulum
+**Yardımcı Kitaplıklar**
+- `date-fns` tarih formatlama
+- `clsx`, `class-variance-authority` durum bazlı sınıf yönetimi
+
+**Geliştirme Araçları**
+- ESLint 9 + `eslint-config-next`
+- TypeScript strict mod
+- Tailwind/PostCSS pipeline
+
+## Kurulum Adımları
 ### 1. Ön Koşullar
-- Node.js 20+
-- npm 10+
-- Supabase hesabı ve proje erişimi
+- Node.js 20 veya üzeri
+- npm 10 veya üzeri
+- Supabase hesabı ve proje yetkisi
 - (Opsiyonel) Supabase CLI ve Vercel hesabı
 
 ### 2. Depoyu Hazırlama
@@ -60,11 +65,11 @@ cd vivolearn
 npm install
 ```
 
-### 3. Supabase Projesini Yapılandırma
-1. Supabase Dashboard üzerinden yeni proje oluşturun.
-2. **Authentication → Providers** sekmesinde Email/Password metodunu aktif edin.
-3. **Auth → Policies** bölümünden ek ayar gerekmiyor; RLS politikaları migration dosyasında tanımlıdır.
-4. "SQL Editor" sekmesinde `supabase/migrations/0001_init.sql` dosyasının tamamını çalıştırarak şema, enum'lar, trigger'lar ve RLS politikalarını oluşturun.
+### 3. Supabase Altyapısını Oluşturma
+1. Supabase Dashboard üzerinden yeni proje açın.
+2. `Authentication → Providers` altında Email/Password metodunu aktif edin.
+3. SQL Editor'da `supabase/migrations/0001_init.sql` dosyasının tamamını çalıştırın.
+4. Eğer CLI kullanıyorsanız `supabase db push` komutuyla aynı migration'ı uygulayabilirsiniz.
 
 ### 4. Ortam Değişkenleri
 Proje kökünde `.env.local` dosyası oluşturun:
@@ -73,60 +78,79 @@ NEXT_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="anon-public-key"
 SUPABASE_SERVICE_ROLE_KEY="service-role-key"
 ```
-> `SUPABASE_SERVICE_ROLE_KEY` yalnızca sunucu tarafında (server actions) kullanılır ve istemciye sızdırılmamalıdır.
+- `SUPABASE_SERVICE_ROLE_KEY` yalnızca server action'larda kullanılmalı, istemci bundle'ına eklenmemelidir.
+- Vercel veya diğer dağıtım ortamlarında aynı değerleri gizli değişken olarak tanımlayın.
 
-### 5. Veritabanı Migrasyonunu Çalıştırma
-Supabase SQL Editor ile migration'ı tetiklediyseniz ek adıma gerek yoktur. CLI kullanıyorsanız:
+### 5. Opsiyonel İyileştirmeler
+- `supabase` CLI ile yerel geliştirme için `supabase start` kullanabilirsiniz.
+- Google Drive paylaşım linklerini embed formatına dönüştürmek için `src/lib/lessons.ts` yardımcılarını inceleyin.
+
+## Uygulamayı Çalıştırma
 ```bash
-supabase db push
-```
-
-## Geliştirme Komutları
-| Komut | Açıklama |
-|-------|----------|
-| `npm run dev` | Geliştirme sunucusunu `http://localhost:3000` üzerinde başlatır |
-| `npm run build` | Prodüksiyon için Next.js derlemesi üretir |
-| `npm run start` | Derlenmiş uygulamayı prodüksiyon modunda çalıştırır |
-| `npm run lint` | ESLint ile statik analiz yapar |
-
-## Uygulamayı Çalıştırma ve Dağıtma
-### Yerel Çalıştırma
-```bash
-npm run dev
+npm run dev       # Geliştirme sunucusu (http://localhost:3000)
+npm run lint      # ESLint ile statik analiz
+npm run build     # Prodüksiyon derlemesi
+npm run start     # Derlenmiş uygulamayı prod modda çalıştırır
 ```
 - İlk kullanıcı kayıtlarında rol otomatik olarak `student` şeklinde atanır.
-- Admin kullanıcı oluşturmak için Supabase `profiles` tablosunda ilgili kaydın `role` alanını `admin` olarak güncelleyin.
+- Admin veya eğitmen rolü atamak için Supabase Dashboard → `profiles` tablosunda ilgili kullanıcının `role` alanını güncelleyin.
+- Ders/quiz oluşturma akışları için eğitmen rolü gereklidir.
 
+## Dağıtım Stratejileri
 ### Vercel Üzerine Dağıtım
-1. Depoyu Vercel ile eşitleyin ve "Next.js" şablonu ile deploy alın.
-2. Vercel ortam değişkenleri paneline `.env.local` değerlerini girin.
-3. Supabase projesinde **Auth → URL configuration** kısmına Vercel domain'inizi ekleyin.
-4. Deploy sonrası `npm run build` aşamasının sorunsuz tamamlandığını doğrulayın.
+1. Depoyu Vercel ile eşitleyin ve "Next.js" şablonuyla projeyi oluşturun.
+2. Ortam değişkenlerini Vercel projenize ekleyin (`Settings → Environment Variables`).
+3. Supabase projenizde `Authentication → URL Configuration` bölümüne Vercel domain'inizi tanımlayın.
+4. Her dağıtımda `next build` başarılı tamamlanıyorsa yayın otomatik olarak devreye girer.
 
-### Diğer Ortamlar
-- Dockerfile bulunmamaktadır; kurumsal ortamlarda container imajı üretmek için `next build` + `next start` tabanlı çok aşamalı Dockerfile hazırlanabilir.
-- CI/CD için Vercel + Supabase native entegrasyonu önerilir. Alternatif olarak GitHub Actions ile lint/build adımlarını tetikleyebilirsiniz.
+### Kurumsal / On-Premise Dağıtım
+- Çok aşamalı bir Dockerfile ile `next build` sonucu üretilen çıktıyı Nginx tabanlı statik sunucuya kopyalayabilir, `next start` ile Node.js üzerinde çalıştırabilirsiniz.
+- Supabase yerine kurum içi PostgreSQL + GoTrue kurulumu tercih edilecekse RLS politikalarının birebir taşınması gerekir.
+- CI/CD için GitHub Actions örneği:
+  - `npm ci`
+  - `npm run lint`
+  - `npm run build`
+  - (Opsiyonel) E2E testleri (`playwright test`)
 
-## Kullanım Senaryoları ve Örnekler
-- **Öğrenci akışı**: Kayıt → Giriş → Kurs sayfasından dönem seçerek başvuru → Onay aldıktan sonra ders/quiz ekranlarına erişim → Quiz sonucu profil ekranında görüntülenir.
-- **Eğitmen akışı**: Eğitmen rolü atandıktan sonra *Eğitmen Paneli* üzerinden kurs oluşturma → Ders videoları ekleme → Dönem açma → Başvuruları onaylama → Quiz tanımlama.
-- **Yönetici akışı**: Admin kullanıcıları `/admin/users` ekranında roller arasında geçiş yapabilir, böylece yeni eğitmenler atanır.
-
-### Supabase REST API Örneği
-Platformun veri modeli Supabase üzerinde barındığı için gerekli durumlarda REST arayüzü kullanılabilir:
+## Kullanım Örnekleri
+### 1. Başvuru API Çağrısı (Supabase REST)
 ```bash
-curl --request GET \
-  "https://YOUR-PROJECT.supabase.co/rest/v1/courses?select=title,summary&is_published=eq.true" \
-  --header "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-  --header "Authorization: Bearer $NEXT_PUBLIC_SUPABASE_ANON_KEY"
+curl --request POST \
+  "https://YOUR-PROJECT.supabase.co/rest/v1/enrollments" \
+  --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "student_id": "UUID",
+    "course_run_id": "UUID",
+    "receipt_no": "2024-TR-001"
+  }'
 ```
-> Üstteki çağrı, yayında olan kurs başlıklarını listeler. Eğitmen yetkileriyle kayıt/başvuru güncellemesi gibi işlemler için service role anahtarını yalnızca güvenli sunucu ortamlarında kullanın.
+> Bu uç nokta yalnızca güvenli sunucu ortamlarından çağrılmalıdır; istemci tarafı başvuruları Next.js Server Actions üzerinden yapılır.
 
-## Katkıda Bulunma
-1. Yeni bir konu için issue açın veya mevcut issue'ya atanın.
-2. `feat/`, `fix/`, `docs/` gibi öneklerle anlamlı branch isimleri kullanın.
-3. Pull request'lerde ilgili ekran görüntüsü veya test çıktısını paylaşın.
-4. Veri şemasında değişiklik yapıyorsanız yeni Supabase migration dosyası ekleyin.
+### 2. Kurs Kataloğu Segmenti
+- `/` ve `/courses` sayfaları yayınlanmış kursları `open`, `upcoming`, `completed` olarak gruplar.
+- Kataloğa yeni kurs eklemek için eğitmen panelinden `Kurs Oluştur` formunu doldurmanız yeterlidir; slug otomatik üretilir.
+
+### 3. Quiz Denemesi Gönderimi
+```bash
+curl --request POST http://localhost:3000/api/mock/submit-quiz \
+  --header "Content-Type: application/json" \
+  --data '{
+    "quizId": "UUID",
+    "answers": [
+      { "questionId": "UUID", "optionId": "UUID" }
+    ]
+  }'
+```
+> Yerel geliştirme sırasında server action'ların manuel testini kolaylaştırmak için `src/app/api/mock/submit-quiz/route.ts` gibi yardımcı uç noktalar tanımlanabilir.
+
+## Katkı Rehberi
+- Yeni özellik veya hata düzeltmesi için issue açarak tartışmayı başlatın.
+- Branch isimlerinde `feat/`, `fix/`, `docs/` gibi önekler kullanın.
+- PR açıklamalarında ilgili ekran görüntüsü, hata senaryosu veya test çıktısını paylaşın.
+- Veri modelini etkileyen değişikliklerde yeni bir SQL migration dosyası eklemeyi unutmayın.
+- Kod standartlarını korumak için PR göndermeden önce `npm run lint` çalıştırın.
 
 ## Lisans
-Bu depo için henüz açık kaynak lisansı tanımlanmamıştır. İçeriğin paylaşımı veya yeniden kullanımı için proje sahipleriyle iletişime geçiniz.
+Bu repo için henüz açık kaynak lisansı tanımlanmamıştır. İçeriğin yeniden kullanımı için proje sahipleri ile iletişime geçin.
