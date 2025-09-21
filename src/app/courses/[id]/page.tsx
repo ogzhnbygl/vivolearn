@@ -43,6 +43,37 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
     existingEnrollment = data as typeof existingEnrollment;
   }
 
+  let progressRows: Tables<"progress">[] = [];
+  if (profile) {
+    const lessonIds = course.lessons.map((lesson) => lesson.id);
+    if (lessonIds.length > 0) {
+      const { data } = await supabase
+        .from("progress")
+        .select("*")
+        .eq("student_id", profile.id)
+        .in("lesson_id", lessonIds);
+      progressRows = (data ?? []) as Tables<"progress">[];
+    }
+  }
+
+  const publishedLessons = course.lessons
+    .slice()
+    .sort((a, b) => a.order_index - b.order_index);
+
+  const startLessonId = (() => {
+    if (progressRows.length > 0) {
+      const sorted = progressRows
+        .slice()
+        .sort((a, b) => {
+          const aTimestamp = new Date(a.last_viewed_at ?? a.updated_at ?? a.created_at).getTime();
+          const bTimestamp = new Date(b.last_viewed_at ?? b.updated_at ?? b.created_at).getTime();
+          return bTimestamp - aTimestamp;
+        });
+      return sorted[0]?.lesson_id ?? publishedLessons[0]?.id ?? null;
+    }
+    return publishedLessons[0]?.id ?? null;
+  })();
+
   return (
     <Container className="flex flex-col gap-10">
       <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
@@ -81,34 +112,47 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
 
       <section id="lessons" className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-primary-900">Ders İçeriği</h2>
-          <span className="text-sm text-slate-500">{course.lessons.length} ders</span>
+          <div>
+            <h2 className="text-2xl font-semibold text-primary-900">Ders İçeriği</h2>
+            <p className="text-sm text-slate-500">{publishedLessons.length} ders</p>
+          </div>
+          {startLessonId && (
+            <Button
+              asChild
+              className="bg-primary-600 text-white hover:bg-primary-700"
+            >
+              <Link href={`/lessons/${startLessonId}`} prefetch={false}>
+                Derslere Başla
+              </Link>
+            </Button>
+          )}
         </div>
-        {course.lessons.length === 0 ? (
+        {publishedLessons.length === 0 ? (
           <p className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
             Ders içerikleri henüz eklenmedi.
           </p>
         ) : (
-          <div className="grid gap-4">
-            {course.lessons
-              .slice()
-              .sort((a, b) => a.order_index - b.order_index)
-              .map((lesson) => (
-                <Card key={lesson.id} className="border-l-4 border-l-primary-400">
-                  <CardHeader className="flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{lesson.title}</CardTitle>
-                      <p className="text-sm text-slate-600">
-                        {lesson.content?.slice(0, 120) ?? "Özet yakında"}
-                      </p>
-                    </div>
-                    <Button asChild variant="secondary" className="mt-2">
-                      <Link href={`/lessons/${lesson.id}`}>Dersi Gör</Link>
-                    </Button>
-                  </CardHeader>
-                </Card>
-              ))}
-          </div>
+          <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            {publishedLessons.map((lesson, index) => (
+              <li key={lesson.id}>
+                <Link
+                  href={`/lessons/${lesson.id}`}
+                  prefetch={false}
+                  className="flex items-center justify-between gap-4 px-5 py-4 text-sm transition hover:bg-primary-50/70"
+                >
+                  <div>
+                    <p className="font-medium text-slate-800">
+                      {index + 1}. {lesson.title}
+                    </p>
+                    <p className="text-xs text-slate-500">Ders süresi yakında</p>
+                  </div>
+                  <span className="text-xs uppercase tracking-wide text-primary-600">
+                    İzle →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

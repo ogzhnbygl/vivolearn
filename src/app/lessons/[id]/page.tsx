@@ -211,8 +211,16 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
         <div className="flex flex-1 flex-col bg-white text-slate-900 shadow-xl">
           <div className="px-8 pt-8">
-            <Badge variant="outline" className="mb-4 border-primary-200 bg-primary-50 text-primary-700">
-              {lesson.course.title}
+            <Badge
+              variant="outline"
+              className="mb-4 border-primary-200 bg-primary-50 text-primary-700 transition hover:border-primary-300 hover:bg-primary-100"
+            >
+              <Link
+                href={`/courses/${lesson.course_id}`}
+                className="inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
+                {lesson.course.title}
+              </Link>
             </Badge>
             <h1 className="text-3xl font-semibold text-slate-900">{lesson.title}</h1>
             <p className="mt-1 text-sm text-slate-600">
