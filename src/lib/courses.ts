@@ -1,9 +1,12 @@
 import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
+type LessonSummary = Pick<Tables<"lessons">, "id" | "title" | "order_index" | "is_published">;
+
 export type CourseWithRelations = Tables<"courses"> & {
   instructor?: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
   course_runs: Tables<"course_runs">[];
+  lessons?: LessonSummary[];
 };
 
 export async function getPublishedCourses() {
@@ -12,7 +15,7 @@ export async function getPublishedCourses() {
     const { data, error } = await supabase
       .from("courses")
       .select(
-        "*, course_runs(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+        "*, course_runs(*), lessons(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
       )
       .eq("is_published", true)
       .order("created_at", { ascending: false });
@@ -21,7 +24,14 @@ export async function getPublishedCourses() {
       throw new Error(`Kurslar alınırken hata oluştu: ${error.message}`);
     }
 
-    return (data ?? []) as CourseWithRelations[];
+    const result = (data ?? []) as CourseWithRelations[];
+
+    return result
+      .map((course) => ({
+        ...course,
+        lessons: (course.lessons ?? []).filter((lesson) => lesson.is_published),
+      }))
+      .filter((course) => course.is_published);
   } catch (err) {
     console.error("Supabase kurs sorgusu hatası", err);
     return [];
@@ -71,9 +81,14 @@ export async function getCourseDetail(courseId: string) {
     throw new Error(`Kurs detayı alınamadı: ${error.message}`);
   }
 
-  return data as (Tables<"courses"> & {
+  const typedData = data as Tables<"courses"> & {
     instructor: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
     course_runs: Tables<"course_runs">[];
     lessons: Tables<"lessons">[];
-  });
+  };
+
+  return {
+    ...typedData,
+    lessons: (typedData.lessons ?? []).filter((lesson) => lesson.is_published),
+  };
 }

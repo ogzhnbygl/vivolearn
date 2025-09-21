@@ -145,6 +145,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
   const quiz = lesson.quizzes[0];
   const courseLessons = (lesson.course.lessons ?? [])
     .slice()
+    .filter((lessonItem) => lessonItem.is_published || lessonItem.id === lesson.id)
     .sort((a, b) => a.order_index - b.order_index);
 
   const renderLessonList = () =>
