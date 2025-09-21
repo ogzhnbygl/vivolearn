@@ -1,12 +1,19 @@
 import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
-type LessonSummary = Pick<Tables<"lessons">, "id" | "title" | "order_index" | "is_published" | "video_url">;
+type LessonSummary = Pick<
+  Tables<"lessons">,
+  "id" | "title" | "order_index" | "is_published" | "video_url" | "section_id" | "content"
+>;
+
+export type CourseSectionWithLessons = Tables<"course_sections"> & {
+  lessons: LessonSummary[];
+};
 
 export type CourseWithRelations = Tables<"courses"> & {
   instructor?: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
   course_runs: Tables<"course_runs">[];
-  lessons: LessonSummary[];
+  sections: CourseSectionWithLessons[];
 };
 
 export async function getPublishedCourses() {
@@ -15,7 +22,7 @@ export async function getPublishedCourses() {
     const { data, error } = await supabase
       .from("courses")
       .select(
-        "*, course_runs(*), lessons(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+        "*, course_runs(*), course_sections(*, lessons(*)), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
       )
       .eq("is_published", true)
       .order("created_at", { ascending: false });
@@ -25,8 +32,11 @@ export async function getPublishedCourses() {
     }
 
     const result = (data ?? []).map((course) => ({
-      ...(course as CourseWithRelations),
-      lessons: ((course as CourseWithRelations).lessons ?? []).filter((lesson) => lesson.is_published),
+      ...(course as unknown as CourseWithRelations),
+      sections: ((course as unknown as CourseWithRelations).sections ?? []).map((section) => ({
+        ...section,
+        lessons: (section.lessons ?? []).filter((lesson) => lesson.is_published),
+      })),
     })) as CourseWithRelations[];
 
     return result.filter((course) => course.is_published);
@@ -70,7 +80,7 @@ export async function getCourseDetail(courseId: string) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "*, course_runs(*), lessons(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+      "*, course_runs(*), course_sections(*, lessons(*)), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
     )
     .eq("id", courseId)
     .single();
@@ -82,11 +92,14 @@ export async function getCourseDetail(courseId: string) {
   const typedData = data as Tables<"courses"> & {
     instructor: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
     course_runs: Tables<"course_runs">[];
-    lessons: Tables<"lessons">[];
+    course_sections: (Tables<"course_sections"> & { lessons: Tables<"lessons">[] })[];
   };
 
   return {
     ...typedData,
-    lessons: (typedData.lessons ?? []).filter((lesson) => lesson.is_published),
+    course_sections: (typedData.course_sections ?? []).map((section) => ({
+      ...section,
+      lessons: (section.lessons ?? []).filter((lesson) => lesson.is_published),
+    })),
   };
 }

@@ -24,7 +24,7 @@ export default async function ProfilePage() {
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select(
-      "*, course_runs(*, course:courses(*, lessons(*, quizzes(*))))"
+      "*, course_runs(*, course:courses(*, course_sections(*, lessons(*, quizzes(*)))))"
     )
     .eq("student_id", profile.id)
     .order("created_at", { ascending: false });
@@ -43,7 +43,9 @@ export default async function ProfilePage() {
   const typedEnrollments = (enrollments ?? []) as (Tables<"enrollments"> & {
     course_runs: Tables<"course_runs"> & {
       course: Tables<"courses"> & {
-        lessons: (Tables<"lessons"> & { quizzes: Tables<"quizzes">[] })[];
+        course_sections: (Tables<"course_sections"> & {
+          lessons: (Tables<"lessons"> & { quizzes: Tables<"quizzes">[] })[];
+        })[];
       };
     };
   })[];
@@ -101,7 +103,9 @@ export default async function ProfilePage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
             {typedEnrollments.map((enrollment) => {
-              const lessons = enrollment.course_runs.course.lessons;
+              const lessons = enrollment.course_runs.course.course_sections
+                .flatMap((section) => section.lessons)
+                .filter(Boolean);
               const completedCount = lessons.filter((lesson) =>
                 progressByLesson.get(`${enrollment.course_run_id}-${lesson.id}`)?.is_completed
               ).length;

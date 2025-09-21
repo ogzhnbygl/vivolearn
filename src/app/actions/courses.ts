@@ -87,6 +87,12 @@ export async function createCourseAction(payload: CreateCoursePayload) {
     return { error: "Takvim ayarlanamadı: " + runError.message };
   }
 
+  await supabase.from("course_sections").insert({
+    course_id: courseId,
+    title: "Genel",
+    order_index: 0,
+  });
+
   revalidatePath("/instructor");
   revalidatePath("/courses");
   return { success: true } as const;
@@ -194,6 +200,7 @@ export async function updateCourseScheduleAction(payload: UpdateCourseSchedulePa
 
 interface CreateLessonPayload {
   courseId: string;
+  sectionId: string;
   title: string;
   videoUrl: string;
   content?: string;
@@ -207,12 +214,34 @@ export async function createLessonAction(payload: CreateLessonPayload) {
   }
 
   const supabase = getSupabaseServerActionClient();
+  const { data: section, error: sectionError } = await supabase
+    .from("course_sections")
+    .select("course_id")
+    .eq("id", payload.sectionId)
+    .single();
+
+  if (sectionError || !section || section.course_id !== payload.courseId) {
+    return { error: "Seçilen bölüm bulunamadı." };
+  }
+
+  let orderIndex = payload.orderIndex;
+  if (typeof orderIndex !== "number") {
+    const { data: existingLessons } = await supabase
+      .from("lessons")
+      .select("order_index")
+      .eq("section_id", payload.sectionId)
+      .order("order_index", { ascending: false })
+      .limit(1);
+    orderIndex = existingLessons?.[0]?.order_index != null ? existingLessons[0].order_index + 1 : 0;
+  }
+
   const lessonInsert: TablesInsert<"lessons"> = {
     course_id: payload.courseId,
+    section_id: payload.sectionId,
     title: payload.title,
     video_url: normalizeGoogleDriveUrl(payload.videoUrl),
     content: payload.content ?? null,
-    order_index: payload.orderIndex ?? 0,
+    order_index: orderIndex,
     is_published: payload.isPublished,
   };
 
@@ -224,6 +253,240 @@ export async function createLessonAction(payload: CreateLessonPayload) {
 
   revalidatePath(`/instructor/courses/${payload.courseId}`);
   revalidatePath(`/courses/${payload.courseId}`);
+  return { success: true } as const;
+}
+
+interface CreateCourseSectionPayload {
+  courseId: string;
+  title: string;
+  orderIndex?: number;
+}
+
+export async function createCourseSectionAction({ courseId, title, orderIndex }: CreateCourseSectionPayload) {
+  const profile = await getCurrentProfile();
+  if (!profile || (profile.role !== "instructor" && profile.role !== "admin")) {
+    return { error: "Bölüm oluşturma yetkiniz yok." };
+  }
+
+  if (!title.trim()) {
+    return { error: "Bölüm adı zorunludur." };
+  }
+
+  const supabase = getSupabaseServerActionClient();
+  const { data: course, error: courseError } = await supabase
+    .from("courses")
+    .select("instructor_id")
+    .eq("id", courseId)
+    .single();
+
+  if (courseError || !course) {
+    return { error: "Kurs bilgisi alınamadı." };
+  }
+
+  if (course.instructor_id !== profile.id && profile.role !== "admin") {
+    return { error: "Bu kurs için yetkiniz yok." };
+  }
+
+  let resolvedOrder = orderIndex;
+  if (typeof resolvedOrder !== "number") {
+    const { data: existingSections } = await supabase
+      .from("course_sections")
+      .select("order_index")
+      .eq("course_id", courseId)
+      .order("order_index", { ascending: false })
+      .limit(1);
+    resolvedOrder = existingSections?.[0]?.order_index != null ? existingSections[0].order_index + 1 : 0;
+  }
+
+  const sectionInsert: TablesInsert<"course_sections"> = {
+    course_id: courseId,
+    title,
+    order_index: resolvedOrder,
+  };
+
+  const { error } = await supabase.from("course_sections").insert(sectionInsert);
+
+  if (error) {
+    return { error: "Bölüm eklenemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface UpdateCourseSectionPayload {
+  sectionId: string;
+  courseId: string;
+  title: string;
+}
+
+export async function updateCourseSectionAction({ sectionId, courseId, title }: UpdateCourseSectionPayload) {
+  if (!title.trim()) {
+    return { error: "Bölüm adı zorunludur." };
+  }
+
+  const supabase = getSupabaseServerActionClient();
+  const updates: TablesUpdate<"course_sections"> = { title };
+  const { error } = await supabase
+    .from("course_sections")
+    .update(updates)
+    .eq("id", sectionId)
+    .eq("course_id", courseId);
+
+  if (error) {
+    return { error: "Bölüm güncellenemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface DeleteCourseSectionPayload {
+  sectionId: string;
+  courseId: string;
+}
+
+export async function deleteCourseSectionAction({ sectionId, courseId }: DeleteCourseSectionPayload) {
+  const supabase = getSupabaseServerActionClient();
+  const { error } = await supabase
+    .from("course_sections")
+    .delete()
+    .eq("id", sectionId)
+    .eq("course_id", courseId);
+
+  if (error) {
+    return { error: "Bölüm silinemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface UpdateLessonPayload {
+  lessonId: string;
+  courseId: string;
+  title?: string;
+  isPublished?: boolean;
+  orderIndex?: number;
+  sectionId?: string;
+  videoUrl?: string;
+  content?: string | null;
+}
+
+export async function updateLessonAction({
+  lessonId,
+  courseId,
+  title,
+  isPublished,
+  orderIndex,
+  sectionId,
+  videoUrl,
+  content,
+}: UpdateLessonPayload) {
+  const supabase = getSupabaseServerActionClient();
+  const updates: TablesUpdate<"lessons"> = {};
+  if (title !== undefined) updates.title = title;
+  if (isPublished !== undefined) updates.is_published = isPublished;
+  if (orderIndex !== undefined) updates.order_index = orderIndex;
+  if (sectionId !== undefined) updates.section_id = sectionId;
+  if (videoUrl !== undefined) updates.video_url = normalizeGoogleDriveUrl(videoUrl);
+  if (content !== undefined) updates.content = content;
+
+  const { error } = await supabase
+    .from("lessons")
+    .update(updates)
+    .eq("id", lessonId)
+    .eq("course_id", courseId);
+
+  if (error) {
+    return { error: "Ders güncellenemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface DeleteLessonPayload {
+  lessonId: string;
+  courseId: string;
+}
+
+export async function deleteLessonAction({ lessonId, courseId }: DeleteLessonPayload) {
+  const supabase = getSupabaseServerActionClient();
+  const { error } = await supabase
+    .from("lessons")
+    .delete()
+    .eq("id", lessonId)
+    .eq("course_id", courseId);
+
+  if (error) {
+    return { error: "Ders silinemedi: " + error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface ReorderSectionsPayload {
+  courseId: string;
+  sections: { id: string; orderIndex: number }[];
+}
+
+export async function reorderCourseSectionsAction({ courseId, sections }: ReorderSectionsPayload) {
+  const supabase = getSupabaseServerActionClient();
+
+  const responses = await Promise.all(
+    sections.map((section) =>
+      supabase
+        .from("course_sections")
+        .update({ order_index: section.orderIndex })
+        .eq("id", section.id)
+        .eq("course_id", courseId)
+    )
+  );
+
+  const firstError = responses.find((response) => response.error)?.error;
+  if (firstError) {
+    return { error: "Bölümler sıralanamadı: " + firstError.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
+  return { success: true } as const;
+}
+
+interface ReorderLessonsPayload {
+  courseId: string;
+  sectionId: string;
+  lessons: { id: string; orderIndex: number }[];
+}
+
+export async function reorderLessonsAction({ courseId, sectionId, lessons }: ReorderLessonsPayload) {
+  const supabase = getSupabaseServerActionClient();
+
+  const responses = await Promise.all(
+    lessons.map((lesson) =>
+      supabase
+        .from("lessons")
+        .update({ order_index: lesson.orderIndex })
+        .eq("id", lesson.id)
+        .eq("course_id", courseId)
+        .eq("section_id", sectionId)
+    )
+  );
+
+  const firstError = responses.find((response) => response.error)?.error;
+  if (firstError) {
+    return { error: "Dersler sıralanamadı: " + firstError.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  revalidatePath(`/courses/${courseId}`);
   return { success: true } as const;
 }
 

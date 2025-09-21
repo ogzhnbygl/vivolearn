@@ -14,7 +14,7 @@ export default async function InstructorDashboard() {
   const { data } = await supabase
     .from("courses")
     .select(
-      "*, course_runs(*, enrollments:enrollments(*)), lessons(*)"
+      "*, course_runs(*, enrollments:enrollments(*)), course_sections(*, lessons(*))"
     )
     .order("created_at", { ascending: false })
     .match(
@@ -27,7 +27,7 @@ export default async function InstructorDashboard() {
 
   const courses = (data ?? []) as (Tables<"courses"> & {
     course_runs: (Tables<"course_runs"> & { enrollments: Tables<"enrollments">[] })[];
-    lessons: Tables<"lessons">[];
+    course_sections: (Tables<"course_sections"> & { lessons: Tables<"lessons">[] })[];
   })[];
 
   return (
@@ -56,6 +56,11 @@ export default async function InstructorDashboard() {
             );
             const schedule = course.course_runs[0] ?? null;
 
+            const lessonCount = course.course_sections.reduce(
+              (acc, section) => acc + (section.lessons?.length ?? 0),
+              0
+            );
+
             return (
               <Card key={course.id} className="h-full">
                 <CardHeader>
@@ -71,7 +76,7 @@ export default async function InstructorDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-slate-600">
                   <p>
-                    <span className="font-medium">Ders sayısı:</span> {course.lessons.length}
+                    <span className="font-medium">Ders sayısı:</span> {lessonCount}
                   </p>
                   <p>
                     <span className="font-medium">Toplam başvuru:</span> {totalEnrollments}

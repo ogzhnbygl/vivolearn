@@ -26,6 +26,10 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
   const profile = await getCurrentProfile();
   const supabase = getSupabaseServerComponentClient();
   const courseRun = course.course_runs[0] ?? null;
+  const sections = (course.course_sections ?? []).map((section) => ({
+    ...section,
+    lessons: (section.lessons ?? []).sort((a, b) => a.order_index - b.order_index),
+  }));
   let existingEnrollment: (Tables<"enrollments"> & {
     course_runs: Tables<"course_runs">;
   }) | null = null;
@@ -43,7 +47,7 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
 
   let progressRows: Tables<"progress">[] = [];
   if (profile) {
-    const lessonIds = course.lessons.map((lesson) => lesson.id);
+    const lessonIds = sections.flatMap((section) => section.lessons.map((lesson) => lesson.id));
     if (lessonIds.length > 0) {
       const { data } = await supabase
         .from("progress")
@@ -54,9 +58,7 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
     }
   }
 
-  const publishedLessons = course.lessons
-    .slice()
-    .sort((a, b) => a.order_index - b.order_index);
+  const publishedLessons = sections.flatMap((section) => section.lessons);
 
   const startLessonId = (() => {
     if (progressRows.length > 0) {
@@ -93,7 +95,7 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
               {course.instructor?.full_name ?? course.instructor?.email ?? "Belirlenecek"}
             </p>
             <p>
-              <span className="font-medium">Ders sayısı:</span> {course.lessons.length}
+              <span className="font-medium">Ders sayısı:</span> {publishedLessons.length}
             </p>
             {courseRun ? (
               <div className="space-y-1 text-sm">
@@ -145,32 +147,47 @@ export default async function CourseDetailPage({ params }: CoursePageProps) {
             </Button>
           )}
         </div>
-        {publishedLessons.length === 0 ? (
+        {sections.length === 0 || publishedLessons.length === 0 ? (
           <p className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
             Ders içerikleri henüz eklenmedi.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            {publishedLessons.map((lesson, index) => (
-              <li key={lesson.id}>
-                <Link
-                  href={`/lessons/${lesson.id}`}
-                  prefetch={false}
-                  className="flex items-center justify-between gap-4 px-5 py-4 text-sm transition hover:bg-primary-50/70"
-                >
-                  <div>
-                    <p className="font-medium text-slate-800">
-                      {index + 1}. {lesson.title}
-                    </p>
-                    <p className="text-xs text-slate-500">Ders süresi yakında</p>
-                  </div>
-                  <span className="text-xs uppercase tracking-wide text-primary-600">
-                    İzle →
-                  </span>
-                </Link>
-              </li>
+          <div className="space-y-4">
+            {sections.map((section, sectionIndex) => (
+              <div key={section.id} className="rounded-2xl border border-slate-200 bg-white">
+                <div className="border-b border-slate-200 px-5 py-4">
+                  <h3 className="text-lg font-semibold text-slate-800">
+                    Bölüm {sectionIndex + 1}: {section.title}
+                  </h3>
+                </div>
+                <ul className="divide-y divide-slate-200">
+                  {section.lessons.length === 0 ? (
+                    <li className="px-5 py-4 text-sm text-slate-500">Bu bölümde içerik bulunmuyor.</li>
+                  ) : (
+                    section.lessons.map((lesson, lessonIndex) => (
+                      <li key={lesson.id}>
+                        <Link
+                          href={`/lessons/${lesson.id}`}
+                          prefetch={false}
+                          className="flex items-center justify-between gap-4 px-5 py-4 text-sm transition hover:bg-primary-50/70"
+                        >
+                          <div>
+                            <p className="font-medium text-slate-800">
+                              Ders {lessonIndex + 1}: {lesson.title}
+                            </p>
+                            <p className="text-xs text-slate-500">Video dersi</p>
+                          </div>
+                          <span className="text-xs uppercase tracking-wide text-primary-600">
+                            İzle →
+                          </span>
+                        </Link>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 

@@ -140,10 +140,14 @@ export default async function LessonPage({ params }: LessonPageProps) {
     progressMap.set(row.lesson_id, row as Tables<"progress">);
   });
   const quiz = lesson.quizzes[0];
-  const courseLessons = (lesson.course.lessons ?? [])
-    .slice()
-    .filter((lessonItem) => lessonItem.is_published || lessonItem.id === lesson.id)
-    .sort((a, b) => a.order_index - b.order_index);
+  const sectionGroups = (lesson.course.course_sections ?? []).map((section) => ({
+    ...section,
+    lessons: (section.lessons ?? [])
+      .filter((lessonItem) => lessonItem.is_published || lessonItem.id === lesson.id)
+      .sort((a, b) => a.order_index - b.order_index),
+  }));
+
+  const courseLessons = sectionGroups.flatMap((section) => section.lessons);
 
   const renderLessonList = () =>
     courseLessons.map((lessonItem, index) => {
@@ -175,9 +179,8 @@ export default async function LessonPage({ params }: LessonPageProps) {
               ✓
             </div>
             <div className="flex-1">
-              <p className={cn("text-sm font-medium", isActive ? "text-white" : "text-slate-100")}
-              >
-                {index + 1}. {lessonItem.title}
+              <p className={cn("text-sm font-medium", isActive ? "text-white" : "text-slate-100")}>
+                Ders {index + 1}: {lessonItem.title}
               </p>
               <p className="text-xs text-slate-400">
                 {isActive

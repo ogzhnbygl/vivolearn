@@ -131,10 +131,45 @@ export interface Database {
           }
         ];
       };
+      course_sections: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          order_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "course_sections_course_id_fkey";
+            columns: ["course_id"];
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       lessons: {
         Row: {
           id: string;
           course_id: string;
+          section_id: string;
           title: string;
           slug: string | null;
           video_url: string;
@@ -147,6 +182,7 @@ export interface Database {
         Insert: {
           id?: string;
           course_id: string;
+          section_id: string;
           title: string;
           slug?: string | null;
           video_url: string;
@@ -159,6 +195,7 @@ export interface Database {
         Update: {
           id?: string;
           course_id?: string;
+          section_id?: string;
           title?: string;
           slug?: string | null;
           video_url?: string;
@@ -173,6 +210,12 @@ export interface Database {
             foreignKeyName: "lessons_course_id_fkey";
             columns: ["course_id"];
             referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lessons_section_id_fkey";
+            columns: ["section_id"];
+            referencedRelation: "course_sections";
             referencedColumns: ["id"];
           }
         ];
