@@ -440,19 +440,38 @@ interface ReorderSectionsPayload {
 export async function reorderCourseSectionsAction({ courseId, sections }: ReorderSectionsPayload) {
   const supabase = getSupabaseServerActionClient();
 
-  const responses = await Promise.all(
-    sections.map((section) =>
+  if (sections.length === 0) {
+    return { success: true } as const;
+  }
+
+  const tempResponses = await Promise.all(
+    sections.map((section, index) =>
       supabase
         .from("course_sections")
-        .update({ order_index: section.orderIndex })
+        .update({ order_index: index + 1000 })
         .eq("id", section.id)
         .eq("course_id", courseId)
     )
   );
 
-  const firstError = responses.find((response) => response.error)?.error;
-  if (firstError) {
-    return { error: "Bölümler sıralanamadı: " + firstError.message };
+  const tempError = tempResponses.find((response) => response.error)?.error;
+  if (tempError) {
+    return { error: "Bölümler sıralanamadı: " + tempError.message };
+  }
+
+  const finalResponses = await Promise.all(
+    sections.map((section, index) =>
+      supabase
+        .from("course_sections")
+        .update({ order_index: index })
+        .eq("id", section.id)
+        .eq("course_id", courseId)
+    )
+  );
+
+  const finalError = finalResponses.find((response) => response.error)?.error;
+  if (finalError) {
+    return { error: "Bölümler sıralanamadı: " + finalError.message };
   }
 
   revalidatePath(`/instructor/courses/${courseId}`);
@@ -469,20 +488,40 @@ interface ReorderLessonsPayload {
 export async function reorderLessonsAction({ courseId, sectionId, lessons }: ReorderLessonsPayload) {
   const supabase = getSupabaseServerActionClient();
 
-  const responses = await Promise.all(
-    lessons.map((lesson) =>
+  if (lessons.length === 0) {
+    return { success: true } as const;
+  }
+
+  const tempResponses = await Promise.all(
+    lessons.map((lesson, index) =>
       supabase
         .from("lessons")
-        .update({ order_index: lesson.orderIndex })
+        .update({ order_index: index + 1000 })
         .eq("id", lesson.id)
         .eq("course_id", courseId)
         .eq("section_id", sectionId)
     )
   );
 
-  const firstError = responses.find((response) => response.error)?.error;
-  if (firstError) {
-    return { error: "Dersler sıralanamadı: " + firstError.message };
+  const tempError = tempResponses.find((response) => response.error)?.error;
+  if (tempError) {
+    return { error: "Dersler sıralanamadı: " + tempError.message };
+  }
+
+  const finalResponses = await Promise.all(
+    lessons.map((lesson, index) =>
+      supabase
+        .from("lessons")
+        .update({ order_index: index })
+        .eq("id", lesson.id)
+        .eq("course_id", courseId)
+        .eq("section_id", sectionId)
+    )
+  );
+
+  const finalError = finalResponses.find((response) => response.error)?.error;
+  if (finalError) {
+    return { error: "Dersler sıralanamadı: " + finalError.message };
   }
 
   revalidatePath(`/instructor/courses/${courseId}`);
