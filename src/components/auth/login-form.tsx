@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { signInAction } from "@/app/actions/auth";
+import { useFormState, useFormStatus } from "react-dom";
+import { signInAction, type AuthFormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,26 +11,24 @@ interface LoginFormProps {
   redirectTo?: string;
 }
 
-export function LoginForm({ redirectTo }: LoginFormProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+const initialState: AuthFormState = { error: null };
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
 
   return (
-    <form
-      className="flex flex-col gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        setError(null);
-        startTransition(async () => {
-          const result = await signInAction({ email, password, redirectTo });
-          if (result?.error) {
-            setError(result.error);
-          }
-        });
-      }}
-    >
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? "Giriş yapılıyor..." : "Giriş Yap"}
+    </Button>
+  );
+}
+
+export function LoginForm({ redirectTo }: LoginFormProps) {
+  const [state, action] = useFormState(signInAction, initialState);
+
+  return (
+    <form className="flex flex-col gap-4" action={action}>
+      <input type="hidden" name="redirectTo" value={redirectTo ?? ""} />
       <div className="space-y-2">
         <Label htmlFor="email">Üniversite e-posta adresi</Label>
         <Input
@@ -40,8 +38,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
           required
           autoComplete="email"
           placeholder="ornek@medeniyet.edu.tr"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
         />
       </div>
       <div className="space-y-2">
@@ -52,14 +48,10 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
           type="password"
           required
           autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
         />
       </div>
-      <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
-      </Button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <SubmitButton />
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <p className="text-sm text-slate-600">
         Hesabınız yok mu? <Link href="/register" className="text-primary-600">Hemen kayıt olun</Link>
       </p>

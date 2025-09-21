@@ -9,15 +9,24 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "@/lib/database.types";
 
-interface SignInPayload {
-  email: string;
-  password: string;
-  redirectTo?: string;
+export interface AuthFormState {
+  error: string | null;
 }
 
-export async function signInAction({ email, password, redirectTo }: SignInPayload) {
-  const supabase = getSupabaseServerActionClient();
+export async function signInAction(
+  _prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const email = (formData.get("email") ?? "").toString().trim();
+  const password = (formData.get("password") ?? "").toString();
+  const redirectToValue = (formData.get("redirectTo") ?? "").toString().trim();
+  const redirectTarget = redirectToValue || undefined;
 
+  if (!email || !password) {
+    return { error: "E-posta ve şifre zorunludur." };
+  }
+
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -25,7 +34,7 @@ export async function signInAction({ email, password, redirectTo }: SignInPayloa
   }
 
   revalidatePath("/");
-  redirect(redirectTo ?? "/profile");
+  redirect(redirectTarget ?? "/profile");
 }
 
 interface RegisterPayload {

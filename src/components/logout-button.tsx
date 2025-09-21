@@ -1,24 +1,23 @@
 "use client";
 
-import { useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { signOutAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 
-export function LogoutButton() {
-  const [isPending, startTransition] = useTransition();
+function SubmitButton() {
+  const { pending } = useFormStatus();
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      onClick={() => {
-        startTransition(async () => {
-          await signOutAction();
-        });
-      }}
-      disabled={isPending}
-    >
-      {isPending ? "Çıkış yapılıyor" : "Çıkış"}
+    <Button type="submit" variant="ghost" disabled={pending}>
+      {pending ? "Çıkış yapılıyor" : "Çıkış"}
     </Button>
+  );
+}
+
+export function LogoutButton() {
+  return (
+    <form action={signOutAction} className="flex items-center">
+      <SubmitButton />
+    </form>
   );
 }
