@@ -69,6 +69,10 @@ export function CreateLessonForm({ courseId }: CreateLessonFormProps) {
           required
           placeholder="https://drive.google.com/file/d/.../preview"
         />
+        <p className="text-xs text-slate-500">
+          Google Drive bağlantıları otomatik olarak embed formatına dönüştürülür. Paylaşım ayarını
+          &quot;Bağlantıya sahip herkes&quot; olacak şekilde güncellediğinizden emin olun.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="lessonContent">Ders Özeti</Label>

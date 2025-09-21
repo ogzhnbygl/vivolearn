@@ -9,7 +9,7 @@ import {
   getSupabaseServiceRoleClient,
 } from "@/lib/supabase-server";
 import { getCurrentProfile } from "@/lib/auth";
-import { formatDateRange } from "@/lib/utils";
+import { formatDateRange, normalizeGoogleDriveUrl } from "@/lib/utils";
 import type { Tables } from "@/lib/database.types";
 import { LessonProgressActions } from "@/components/lesson-progress-actions";
 import Link from "next/link";
@@ -142,7 +142,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
       <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
         <div className="overflow-hidden rounded-2xl border border-primary-100 bg-black/5 shadow">
           <iframe
-            src={lesson.video_url}
+            src={normalizeGoogleDriveUrl(lesson.video_url)}
             title={lesson.title}
             className="aspect-video w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

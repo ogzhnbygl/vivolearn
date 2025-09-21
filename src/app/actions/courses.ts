@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSupabaseServerActionClient } from "@/lib/supabase-server";
+import { normalizeGoogleDriveUrl } from "@/lib/utils";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/database.types";
 
 function slugify(input: string) {
@@ -113,7 +114,7 @@ export async function createLessonAction(payload: CreateLessonPayload) {
   const lessonInsert: TablesInsert<"lessons"> = {
     course_id: payload.courseId,
     title: payload.title,
-    video_url: payload.videoUrl,
+    video_url: normalizeGoogleDriveUrl(payload.videoUrl),
     content: payload.content ?? null,
     order_index: payload.orderIndex ?? 0,
     is_published: payload.isPublished,
