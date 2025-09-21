@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 
 interface CreateLessonFormProps {
   courseId: string;
+  sectionId: string;
 }
 
-export function CreateLessonForm({ courseId }: CreateLessonFormProps) {
+export function CreateLessonForm({ courseId, sectionId }: CreateLessonFormProps) {
   const [title, setTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [content, setContent] = useState("");
@@ -31,6 +32,7 @@ export function CreateLessonForm({ courseId }: CreateLessonFormProps) {
         startTransition(async () => {
           const result = await createLessonAction({
             courseId,
+            sectionId,
             title,
             videoUrl,
             content,

@@ -1,6 +1,14 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  startTransition,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import {
   createCourseSectionAction,
   createLessonAction,
@@ -22,6 +30,8 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -216,7 +226,7 @@ export function CurriculumBuilder({ courseId, sections }: CurriculumBuilderProps
             }}
           />
         ) : (
-          <Button variant="outline" onClick={() => setIsNewSectionOpen(true)}>
+          <Button variant="secondary" onClick={() => setIsNewSectionOpen(true)}>
             + Yeni bölüm
           </Button>
         )}
@@ -234,7 +244,7 @@ interface SortableSectionCardProps {
   renamingLessonId: string | null;
   onRenamingLessonChange: (id: string | null) => void;
   activeAddContent: ActiveAddState;
-  setActiveAddContent: (state: ActiveAddState) => void;
+  setActiveAddContent: Dispatch<SetStateAction<ActiveAddState>>;
   onFeedback: (message: string | null) => void;
 }
 
@@ -311,13 +321,13 @@ function SortableSectionCard({
 
       <div className="border-t border-slate-200 bg-slate-50/60 px-5 py-4">
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={() =>
-            setActiveAddContent((prev) =>
+            setActiveAddContent((prev): ActiveAddState =>
               prev?.sectionId === section.id && prev.mode !== "select"
                 ? null
-                : { sectionId: section.id, mode: "select" }
+                : { sectionId: section.id, mode: "select" as const }
             )
           }
         >
@@ -358,8 +368,8 @@ function useSortableCard(id: string, type: "section" | "lesson", extraData: Reco
 interface SectionHeaderProps {
   section: LocalSection;
   index: number;
-  dragAttributes: React.HTMLAttributes<HTMLDivElement>;
-  dragListeners: React.HTMLAttributes<HTMLDivElement>;
+  dragAttributes: DraggableAttributes;
+  dragListeners?: DraggableSyntheticListeners;
   isRenaming: boolean;
   onRenamingChange: (id: string | null) => void;
   onRename: (title: string) => Promise<void> | void;
@@ -385,7 +395,7 @@ function SectionHeader({
         <button
           type="button"
           {...dragAttributes}
-          {...dragListeners}
+          {...(dragListeners ?? {})}
           className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-slate-500"
         >
           ≡

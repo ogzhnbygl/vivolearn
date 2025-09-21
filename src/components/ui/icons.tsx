@@ -1,13 +1,12 @@
 "use client";
 
-import { IconChevronDown, IconChevronUp, IconEdit2, IconTrash2, IconGripVertical, IconBook } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit2, Trash2, GripVertical, Book } from "lucide-react";
 
 export const Icons = {
-  chevronUp: IconChevronUp,
-  chevronDown: IconChevronDown,
-  edit: IconEdit2,
-  trash: IconTrash2,
-  drag: IconGripVertical,
-  lesson: IconBook,
+  chevronUp: ChevronUp,
+  chevronDown: ChevronDown,
+  edit: Edit2,
+  trash: Trash2,
+  drag: GripVertical,
+  lesson: Book,
 };
-
