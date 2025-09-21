@@ -200,8 +200,8 @@ export default async function LessonPage({ params }: LessonPageProps) {
   return (
     <div className="flex min-h-screen bg-slate-900 text-slate-50">
       <div className="flex flex-1 flex-col">
-        <div className="relative overflow-hidden bg-slate-950">
-          <div className="aspect-video w-full bg-black">
+        <div className="relative overflow-hidden bg-black">
+          <div className="aspect-video w-full">
             <iframe
               src={normalizeGoogleDriveUrl(lesson.video_url)}
               title={lesson.title}
@@ -210,41 +210,18 @@ export default async function LessonPage({ params }: LessonPageProps) {
               allowFullScreen
             />
           </div>
-          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent px-6 py-6 md:flex-row md:items-end md:justify-between">
-            <div className="flex-1 space-y-3">
-              <Badge variant="outline" className="border-white/30 bg-white/10 text-white">
-                {lesson.course.title}
-              </Badge>
-              <h1 className="text-2xl font-semibold text-white md:text-3xl">{lesson.title}</h1>
-              <p className="text-sm text-slate-300">
-                Eğitmen: {lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-4 text-sm text-slate-100 md:max-w-xs">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-300">Erişim dönemi</p>
-                <p className="font-medium text-white">
-                  {formatDateRange(
-                    typedEnrollment.course_runs.access_start,
-                    typedEnrollment.course_runs.access_end
-                  )}
-                </p>
-              </div>
-              <LessonProgressActions
-                lessonId={lesson.id}
-                courseRunId={typedEnrollment.course_run_id}
-                initialState={{
-                  isCompleted: currentProgress?.is_completed ?? false,
-                  lastViewedAt: currentProgress?.last_viewed_at ?? null,
-                }}
-              />
-            </div>
-          </div>
         </div>
 
-        <div className="-mt-8 flex flex-1 flex-col rounded-t-3xl bg-white text-slate-900 shadow-xl">
-          <div className="px-8 pt-10">
-            <div className="flex flex-wrap gap-6 text-sm font-semibold text-slate-500">
+        <div className="flex flex-1 flex-col bg-white text-slate-900 shadow-xl">
+          <div className="px-8 pt-8">
+            <Badge variant="outline" className="mb-4 border-primary-200 bg-primary-50 text-primary-700">
+              {lesson.course.title}
+            </Badge>
+            <h1 className="text-3xl font-semibold text-slate-900">{lesson.title}</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Eğitmen: {lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}
+            </p>
+            <div className="mt-6 flex flex-wrap gap-6 text-sm font-semibold text-slate-500">
               <span className="border-b-2 border-primary-600 pb-2 text-primary-600">Genel Bakış</span>
               <span className="pb-2">Notlar</span>
               <span className="pb-2">Duyurular</span>
@@ -257,6 +234,27 @@ export default async function LessonPage({ params }: LessonPageProps) {
               <p className="text-base leading-7 text-slate-600">
                 {lesson.content ?? "Bu ders için içerik özeti yakında paylaşılacak."}
               </p>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">İlerleme</h3>
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                <LessonProgressActions
+                  lessonId={lesson.id}
+                  courseRunId={typedEnrollment.course_run_id}
+                  initialState={{
+                    isCompleted: currentProgress?.is_completed ?? false,
+                    lastViewedAt: currentProgress?.last_viewed_at ?? null,
+                  }}
+                />
+                <div>
+                  <span className="font-medium text-slate-900">Erişim dönemi:</span> {" "}
+                  {formatDateRange(
+                    typedEnrollment.course_runs.access_start,
+                    typedEnrollment.course_runs.access_end
+                  )}
+                </div>
+              </div>
             </section>
 
             {quiz ? (

@@ -1,12 +1,12 @@
 import { getSupabaseServerComponentClient } from "@/lib/supabase-server";
 import type { Tables } from "@/lib/database.types";
 
-type LessonSummary = Pick<Tables<"lessons">, "id" | "title" | "order_index" | "is_published">;
+type LessonSummary = Pick<Tables<"lessons">, "id" | "title" | "order_index" | "is_published" | "video_url">;
 
 export type CourseWithRelations = Tables<"courses"> & {
   instructor?: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
   course_runs: Tables<"course_runs">[];
-  lessons?: LessonSummary[];
+  lessons: LessonSummary[];
 };
 
 export async function getPublishedCourses() {
@@ -24,14 +24,12 @@ export async function getPublishedCourses() {
       throw new Error(`Kurslar alınırken hata oluştu: ${error.message}`);
     }
 
-    const result = (data ?? []) as CourseWithRelations[];
+    const result = (data ?? []).map((course) => ({
+      ...(course as CourseWithRelations),
+      lessons: ((course as CourseWithRelations).lessons ?? []).filter((lesson) => lesson.is_published),
+    })) as CourseWithRelations[];
 
-    return result
-      .map((course) => ({
-        ...course,
-        lessons: (course.lessons ?? []).filter((lesson) => lesson.is_published),
-      }))
-      .filter((course) => course.is_published);
+    return result.filter((course) => course.is_published);
   } catch (err) {
     console.error("Supabase kurs sorgusu hatası", err);
     return [];
