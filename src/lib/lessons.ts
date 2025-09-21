@@ -5,6 +5,7 @@ export type LessonDetail = Tables<"lessons"> & {
   course: Tables<"courses"> & {
     instructor?: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
     course_runs: Tables<"course_runs">[];
+    lessons: Pick<Tables<"lessons">, "id" | "title" | "order_index" | "is_published" | "video_url">[];
   };
   quizzes: (Tables<"quizzes"> & {
     quiz_questions: (Tables<"quiz_questions"> & {
@@ -18,7 +19,7 @@ export async function getLessonDetail(lessonId: string) {
   const { data, error } = await supabase
     .from("lessons")
     .select(
-      "*, course:courses(*, course_runs(*), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)), quizzes(*, quiz_questions(*, quiz_options(*)))"
+      "*, course:courses(*, course_runs(*), lessons(id, title, order_index, is_published, video_url), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)), quizzes(*, quiz_questions(*, quiz_options(*)))"
     )
     .eq("id", lessonId)
     .single();

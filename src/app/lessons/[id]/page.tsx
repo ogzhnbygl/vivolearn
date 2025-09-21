@@ -1,18 +1,16 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Container } from "@/components/layout/container";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { LessonProgressActions } from "@/components/lesson-progress-actions";
+import { getCurrentProfile } from "@/lib/auth";
 import { getLessonDetail, type LessonDetail } from "@/lib/lessons";
 import {
   getSupabaseServerComponentClient,
   getSupabaseServiceRoleClient,
 } from "@/lib/supabase-server";
-import { getCurrentProfile } from "@/lib/auth";
-import { formatDateRange, normalizeGoogleDriveUrl } from "@/lib/utils";
+import { cn, formatDateRange, normalizeGoogleDriveUrl } from "@/lib/utils";
 import type { Tables } from "@/lib/database.types";
-import { LessonProgressActions } from "@/components/lesson-progress-actions";
-import Link from "next/link";
 
 interface LessonPageProps {
   params: Promise<{ id: string }>;
@@ -43,31 +41,39 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   if (unauthorized || !lesson) {
     return (
-      <Container className="flex flex-col gap-6 py-20 text-center text-slate-600">
-        <h1 className="text-2xl font-semibold text-primary-900">Derse erişiminiz yok</h1>
-        <p>Bu dersi görüntülemek için ilgili kursa kayıt olup eğitmen onayı almanız gerekir.</p>
-        <Button asChild variant="secondary" className="mx-auto">
-          <Link href="/courses">Kurslara Dön</Link>
-        </Button>
-      </Container>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-200">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-2xl font-semibold text-white">Derse erişiminiz yok</h1>
+          <p className="text-sm text-slate-400">
+            Bu dersi görüntülemek için ilgili kursa kayıt olup eğitmen onayı almanız gerekir.
+          </p>
+          <Button asChild variant="secondary">
+            <Link href="/courses">Kurslara Dön</Link>
+          </Button>
+        </div>
+      </div>
     );
   }
 
   const profile = await getCurrentProfile();
   if (!profile) {
     return (
-      <Container className="flex flex-col gap-6 py-20 text-center text-slate-600">
-        <h1 className="text-2xl font-semibold text-primary-900">Giriş yapmalısınız</h1>
-        <p>Ders içeriklerini görüntülemek için hesabınıza giriş yapın.</p>
-        <div className="mx-auto flex gap-2">
-          <Button asChild variant="secondary">
-            <Link href="/login">Giriş Yap</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">Kayıt Ol</Link>
-          </Button>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-200">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-2xl font-semibold text-white">Giriş yapmalısınız</h1>
+          <p className="text-sm text-slate-400">
+            Ders içeriklerini görüntülemek için hesabınıza giriş yapın.
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/login">Giriş Yap</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/register">Kayıt Ol</Link>
+            </Button>
+          </div>
         </div>
-      </Container>
+      </div>
     );
   }
 
@@ -80,19 +86,23 @@ export default async function LessonPage({ params }: LessonPageProps) {
     .in("course_run_id", courseRunIds)
     .maybeSingle();
 
-  const typedEnrollment = enrollment as (Tables<"enrollments"> & {
-    course_runs: Tables<"course_runs">;
-  }) | null;
+  const typedEnrollment = enrollment as
+    | (Tables<"enrollments"> & { course_runs: Tables<"course_runs"> })
+    | null;
 
   if (!typedEnrollment || typedEnrollment.status !== "approved") {
     return (
-      <Container className="flex flex-col gap-6 py-20 text-center text-slate-600">
-        <h1 className="text-2xl font-semibold text-primary-900">Başvurunuz onaylanmadı</h1>
-        <p>Derse erişebilmek için eğitmen onayını beklemelisiniz.</p>
-        <Button asChild variant="secondary" className="mx-auto">
-          <Link href={`/courses/${lesson.course_id}`}>Kurs Detayı</Link>
-        </Button>
-      </Container>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-200">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-2xl font-semibold text-white">Başvurunuz onaylanmadı</h1>
+          <p className="text-sm text-slate-400">
+            Derse erişebilmek için eğitmen onayını beklemelisiniz.
+          </p>
+          <Button asChild variant="secondary">
+            <Link href={`/courses/${lesson.course_id}`}>Kurs Detayı</Link>
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -106,107 +116,213 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   if (!isWithinWindow) {
     return (
-      <Container className="flex flex-col gap-6 py-20 text-center text-slate-600">
-        <h1 className="text-2xl font-semibold text-primary-900">Erişim süresi dışındasınız</h1>
-        <p>
-          Bu ders {formatDateRange(typedEnrollment.course_runs.access_start, typedEnrollment.course_runs.access_end)}
-          {" "}
-          tarihleri arasında erişime açıktır.
-        </p>
-      </Container>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-200">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-2xl font-semibold text-white">Erişim süresi dışındasınız</h1>
+          <p className="text-sm text-slate-400">
+            Bu ders {formatDateRange(
+              typedEnrollment.course_runs.access_start,
+              typedEnrollment.course_runs.access_end
+            )} tarihleri arasında erişime açıktır.
+          </p>
+        </div>
+      </div>
     );
   }
 
-  const { data: progressRow } = await supabase
+  const { data: progressRows } = await supabase
     .from("progress")
     .select("*")
     .eq("student_id", profile.id)
-    .eq("lesson_id", lesson.id)
-    .eq("course_run_id", typedEnrollment.course_run_id)
-    .maybeSingle();
+    .eq("course_run_id", typedEnrollment.course_run_id);
 
-  const progress = (progressRow as Tables<"progress"> | null) ?? null;
+  const progressMap = new Map<string, Tables<"progress">>();
+  (progressRows ?? []).forEach((row) => {
+    progressMap.set(row.lesson_id, row as Tables<"progress">);
+  });
 
+  const currentProgress = progressMap.get(lesson.id) ?? null;
   const quiz = lesson.quizzes[0];
+  const courseLessons = (lesson.course.lessons ?? [])
+    .slice()
+    .sort((a, b) => a.order_index - b.order_index);
+
+  const renderLessonList = () =>
+    courseLessons.map((lessonItem, index) => {
+      const isActive = lessonItem.id === lesson.id;
+      const completed = progressMap.get(lessonItem.id)?.is_completed ?? false;
+
+      return (
+        <Link
+          key={lessonItem.id}
+          href={`/lessons/${lessonItem.id}`}
+          prefetch={false}
+          aria-current={isActive ? "page" : undefined}
+          className={cn(
+            "group block rounded-xl border px-4 py-3 text-sm transition",
+            isActive
+              ? "pointer-events-none border-primary-500 bg-primary-500/20 text-white shadow-lg"
+              : "border-white/10 bg-white/[0.08] text-slate-100 hover:border-primary-400 hover:bg-primary-500/10"
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "mt-1 flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-semibold transition",
+                completed
+                  ? "border-primary-400 bg-primary-400 text-slate-900"
+                  : "border-slate-500 text-transparent"
+              )}
+            >
+              ✓
+            </div>
+            <div className="flex-1">
+              <p className={cn("text-sm font-medium", isActive ? "text-white" : "text-slate-100")}
+              >
+                {index + 1}. {lessonItem.title}
+              </p>
+              <p className="text-xs text-slate-400">
+                {isActive
+                  ? "Şu an izleniyor"
+                  : completed
+                  ? "Tamamlandı"
+                  : lessonItem.is_published
+                  ? "Hazır"
+                  : "Taslak"}
+              </p>
+            </div>
+          </div>
+        </Link>
+      );
+    });
 
   return (
-    <Container className="flex flex-col gap-10">
-      <header className="space-y-2">
-        <Badge variant="outline" className="uppercase tracking-wide">
-          {lesson.course.title}
-        </Badge>
-        <h1 className="text-3xl font-semibold text-primary-900">{lesson.title}</h1>
-        <p className="text-sm text-slate-600">{lesson.content ?? "Ders özeti hazırlanıyor."}</p>
-      </header>
-
-      <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
-        <div className="overflow-hidden rounded-2xl border border-primary-100 bg-black/5 shadow">
-          <iframe
-            src={normalizeGoogleDriveUrl(lesson.video_url)}
-            title={lesson.title}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Ders İlerleme</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-slate-600">
-            <p>
-              <span className="font-medium">Eğitmen:</span> {" "}
-              {lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}
-            </p>
-            <p>
-              <span className="font-medium">Erişim dönemi:</span> {" "}
-              {formatDateRange(
-                typedEnrollment.course_runs.access_start,
-                typedEnrollment.course_runs.access_end
-              )}
-            </p>
-            <LessonProgressActions
-              lessonId={lesson.id}
-              courseRunId={typedEnrollment.course_run_id}
-              initialState={{
-                isCompleted: progress?.is_completed ?? false,
-                lastViewedAt: progress?.last_viewed_at ?? null,
-              }}
+    <div className="flex min-h-screen bg-slate-900 text-slate-50">
+      <div className="flex flex-1 flex-col">
+        <div className="relative overflow-hidden bg-slate-950">
+          <div className="aspect-video w-full bg-black">
+            <iframe
+              src={normalizeGoogleDriveUrl(lesson.video_url)}
+              title={lesson.title}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
             />
-          </CardContent>
-        </Card>
-      </section>
-
-      {quiz ? (
-        <section className="grid gap-4">
-          <h2 className="text-2xl font-semibold text-primary-900">Quiz</h2>
-          <Card>
-            <CardHeader>
-              <CardTitle>{quiz.title}</CardTitle>
-              <p className="text-sm text-slate-600">{quiz.description ?? "Quiz açıklaması"}</p>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between text-sm text-slate-600">
+          </div>
+          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent px-6 py-6 md:flex-row md:items-end md:justify-between">
+            <div className="flex-1 space-y-3">
+              <Badge variant="outline" className="border-white/30 bg-white/10 text-white">
+                {lesson.course.title}
+              </Badge>
+              <h1 className="text-2xl font-semibold text-white md:text-3xl">{lesson.title}</h1>
+              <p className="text-sm text-slate-300">
+                Eğitmen: {lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-4 text-sm text-slate-100 md:max-w-xs">
               <div>
-                <p>
-                  <span className="font-medium">Başarı eşiği:</span> {quiz.passing_score} puan
+                <p className="text-xs uppercase tracking-wide text-slate-300">Erişim dönemi</p>
+                <p className="font-medium text-white">
+                  {formatDateRange(
+                    typedEnrollment.course_runs.access_start,
+                    typedEnrollment.course_runs.access_end
+                  )}
                 </p>
-                {quiz.duration_seconds && (
-                  <p>
-                    <span className="font-medium">Süre:</span> {Math.round(quiz.duration_seconds / 60)} dk
-                  </p>
-                )}
               </div>
-              <Button asChild>
-                <Link href={`/lessons/${lesson.id}/quiz`}>Quiz&apos;e Başla</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
-      ) : (
-        <section className="rounded-xl border border-dashed border-primary-200 bg-white/60 p-6 text-sm text-slate-500">
-          Bu ders için quiz henüz tanımlanmadı.
-        </section>
-      )}
-    </Container>
+              <LessonProgressActions
+                lessonId={lesson.id}
+                courseRunId={typedEnrollment.course_run_id}
+                initialState={{
+                  isCompleted: currentProgress?.is_completed ?? false,
+                  lastViewedAt: currentProgress?.last_viewed_at ?? null,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="-mt-8 flex flex-1 flex-col rounded-t-3xl bg-white text-slate-900 shadow-xl">
+          <div className="px-8 pt-10">
+            <div className="flex flex-wrap gap-6 text-sm font-semibold text-slate-500">
+              <span className="border-b-2 border-primary-600 pb-2 text-primary-600">Genel Bakış</span>
+              <span className="pb-2">Notlar</span>
+              <span className="pb-2">Duyurular</span>
+              <span className="pb-2">Yorumlar</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-slate-900">Ders özeti</h2>
+              <p className="text-base leading-7 text-slate-600">
+                {lesson.content ?? "Bu ders için içerik özeti yakında paylaşılacak."}
+              </p>
+            </section>
+
+            {quiz ? (
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">{quiz.title}</h3>
+                    <p className="text-sm text-slate-600">{quiz.description ?? "Quiz açıklaması yakında."}</p>
+                  </div>
+                  <Button asChild className="w-fit">
+                    <Link href={`/lessons/${lesson.id}/quiz`}>Quiz&apos;e Başla</Link>
+                  </Button>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
+                  <span>
+                    <span className="font-medium text-slate-900">Başarı eşiği:</span> {quiz.passing_score} puan
+                  </span>
+                  {quiz.duration_seconds && (
+                    <span>
+                      <span className="font-medium text-slate-900">Süre:</span> {Math.round(quiz.duration_seconds / 60)} dk
+                    </span>
+                  )}
+                </div>
+              </section>
+            ) : (
+              <section className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+                Bu ders için quiz henüz tanımlanmadı.
+              </section>
+            )}
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900">Kurs Bilgileri</h3>
+              <dl className="mt-4 grid gap-4 text-sm text-slate-600 md:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-slate-900">Kurs</dt>
+                  <dd>{lesson.course.title}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-900">Ders sayısı</dt>
+                  <dd>{courseLessons.length}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-900">Eğitmen</dt>
+                  <dd>{lesson.course.instructor?.full_name ?? lesson.course.instructor?.email ?? "Belirlenecek"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-900">Durumunuz</dt>
+                  <dd>{typedEnrollment.status === "approved" ? "Onaylandı" : "Beklemede"}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="lg:hidden">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900">Kurs içeriği</h3>
+              <div className="space-y-2">{renderLessonList()}</div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <aside className="hidden w-80 flex-col border-l border-slate-800 bg-slate-950/80 text-slate-100 lg:flex">
+        <div className="border-b border-white/10 px-6 py-5">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Kurs içeriği</p>
+          <p className="text-lg font-semibold text-white">{courseLessons.length} ders</p>
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 py-4 space-y-2">{renderLessonList()}</div>
+      </aside>
+    </div>
   );
 }
