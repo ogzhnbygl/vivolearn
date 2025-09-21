@@ -71,6 +71,41 @@ export function CourseApplicationForm({
       : "Başvurunuz reddedildi"
     : null;
 
+  const isApproved = existingEnrollment?.status === "approved";
+  const approvalDate = existingEnrollment?.decided_at
+    ? new Date(existingEnrollment.decided_at).toLocaleString("tr-TR")
+    : null;
+
+  if (isApproved) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle>Başvuru Durumu</CardTitle>
+          <p className="text-sm text-green-600">Başvurunuz onaylandı</p>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm text-slate-600">
+          <p>
+            <span className="font-medium">Dahil olduğunuz dönem:</span> {" "}
+            {existingEnrollment.course_runs.label ?? "Güncel dönem"}
+          </p>
+          <p>
+            <span className="font-medium">Başvuru zamanı:</span> {" "}
+            {new Date(existingEnrollment.created_at).toLocaleString("tr-TR")}
+          </p>
+          {approvalDate && (
+            <p>
+              <span className="font-medium">Onay tarihi:</span> {" "}
+              {approvalDate}
+            </p>
+          )}
+          <p className="rounded-lg border border-green-200 bg-green-50/60 p-4 text-green-700">
+            Eğitim süreci başladı. Dersleri izlemek için kurs içeriğine geri dönebilirsiniz.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
