@@ -21,7 +21,7 @@ as $$
   select auth.role();
 $$;
 
-create or replace function public.current_user_has_any_role(target_roles text[])
+create or replace function public.current_user_has_any_role(target_roles public.user_role[])
 returns boolean
 language sql
 stable
@@ -36,7 +36,7 @@ as $$
   );
 $$;
 
-create or replace function public.current_user_has_role(target_role text)
+create or replace function public.current_user_has_role(target_role public.user_role)
 returns boolean
 language sql
 stable
@@ -70,7 +70,7 @@ alter policy "Courses readable by authenticated" on public.courses
 
 alter policy "Instructors create courses" on public.courses
   with check (
-    (select public.current_user_has_any_role(ARRAY['instructor','admin']))
+    (select public.current_user_has_any_role(ARRAY['instructor','admin']::public.user_role[]))
   );
 
 alter policy "Owners manage courses" on public.courses
@@ -284,7 +284,7 @@ create policy "Access enrollments" on public.enrollments
 alter policy "Students create enrollment requests" on public.enrollments
   with check (
     student_id = (select public.current_user_id())
-    and (select public.current_user_has_any_role(ARRAY['student','instructor']))
+    and (select public.current_user_has_any_role(ARRAY['student','instructor']::public.user_role[]))
   );
 
 alter policy "Instructors update enrollment status" on public.enrollments

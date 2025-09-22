@@ -44,13 +44,29 @@ interface RegisterPayload {
 }
 
 export async function registerAction({ fullName, email, password }: RegisterPayload) {
+  const trimmedFullName = fullName.trim();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!trimmedFullName) {
+    return { error: "Ad soyad alanı zorunludur." };
+  }
+
+  if (!normalizedEmail) {
+    return { error: "Geçerli bir e-posta adresi girin." };
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(normalizedEmail)) {
+    return { error: "Geçerli bir e-posta adresi girin." };
+  }
+
   if (password.length < 6) {
     return { error: "Şifre en az 6 karakter olmalıdır." };
   }
 
   const supabase = getSupabaseServerActionClient();
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: normalizedEmail,
     password,
   });
 
@@ -67,7 +83,7 @@ export async function registerAction({ fullName, email, password }: RegisterPayl
   const profileInsert: TablesInsert<"profiles"> = {
     id: user.id,
     email: user.email!,
-    full_name: fullName,
+    full_name: trimmedFullName,
   };
   const { error: profileError } = await serviceClient
     .from("profiles")
