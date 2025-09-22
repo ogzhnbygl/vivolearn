@@ -352,7 +352,7 @@ interface DeleteCourseSectionPayload {
 }
 
 export async function deleteCourseSectionAction({ sectionId, courseId }: DeleteCourseSectionPayload) {
-  const supabase = getSupabaseServiceRoleClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase
     .from("course_sections")
     .delete()
@@ -419,7 +419,7 @@ interface DeleteLessonPayload {
 }
 
 export async function deleteLessonAction({ lessonId, courseId }: DeleteLessonPayload) {
-  const supabase = getSupabaseServiceRoleClient();
+  const supabase = getSupabaseServerActionClient();
   const { error } = await supabase
     .from("lessons")
     .delete()

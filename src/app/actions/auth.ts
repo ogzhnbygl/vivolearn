@@ -79,18 +79,24 @@ export async function registerAction({ fullName, email, password }: RegisterPayl
     return { error: "Kullanıcı oluşturulamadı." };
   }
 
-  const serviceClient = getSupabaseServiceRoleClient() as unknown as SupabaseClient<Database>;
   const profileInsert: TablesInsert<"profiles"> = {
     id: user.id,
     email: user.email!,
     full_name: trimmedFullName,
   };
-  const { error: profileError } = await serviceClient
-    .from("profiles")
-    .upsert(profileInsert);
+
+  // Try to upsert the profile using the user's session (less privileged).
+  // If RLS prevents this, fall back to the service role client.
+  const clientForProfile = getSupabaseServerActionClient();
+  const { error: profileError } = await clientForProfile.from("profiles").upsert(profileInsert);
 
   if (profileError) {
-    return { error: "Profil kaydı başarısız: " + profileError.message };
+    // If upsert failed due to permissions, use the service role as a fallback.
+    const serviceClient = getSupabaseServiceRoleClient() as unknown as SupabaseClient<Database>;
+    const { error: svcErr } = await serviceClient.from("profiles").upsert(profileInsert);
+    if (svcErr) {
+      return { error: "Profil kaydı başarısız: " + svcErr.message };
+    }
   }
 
   revalidatePath("/");
