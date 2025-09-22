@@ -50,6 +50,20 @@ create trigger trg_courses_updated
 before update on public.courses
 for each row execute procedure public.touch_updated_at();
 
+create table public.course_sections (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses(id) on delete cascade,
+  title text not null,
+  order_index integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(course_id, order_index)
+);
+
+create trigger trg_course_sections_updated
+before update on public.course_sections
+for each row execute procedure public.touch_updated_at();
+
 create table public.course_runs (
   id uuid primary key default gen_random_uuid(),
   course_id uuid not null references public.courses(id) on delete cascade,
@@ -70,6 +84,7 @@ for each row execute procedure public.touch_updated_at();
 create table public.lessons (
   id uuid primary key default gen_random_uuid(),
   course_id uuid not null references public.courses(id) on delete cascade,
+  section_id uuid not null references public.course_sections(id) on delete cascade,
   title text not null,
   slug text,
   video_url text not null,
@@ -78,7 +93,7 @@ create table public.lessons (
   is_published boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique(course_id, order_index)
+  unique(section_id, order_index)
 );
 
 create trigger trg_lessons_updated
@@ -179,6 +194,7 @@ create trigger trg_quiz_attempts_updated
 before update on public.quiz_attempts
 for each row execute procedure public.touch_updated_at();
 
+create index idx_course_sections_course_id on public.course_sections(course_id);
 create index idx_course_runs_course_id on public.course_runs(course_id);
 create index idx_lessons_course_id on public.lessons(course_id);
 create index idx_enrollments_course_run_id on public.enrollments(course_run_id);
@@ -191,6 +207,7 @@ create index idx_quiz_attempts_quiz_id on public.quiz_attempts(quiz_id);
 
 alter table public.profiles enable row level security;
 alter table public.courses enable row level security;
+alter table public.course_sections enable row level security;
 alter table public.course_runs enable row level security;
 alter table public.lessons enable row level security;
 alter table public.enrollments enable row level security;
@@ -202,61 +219,137 @@ alter table public.quiz_attempts enable row level security;
 
 -- Profiles policies
 create policy "Profiles are viewable" on public.profiles
-  for select using (auth.role() = 'authenticated');
+  for select using ((select auth.role()) = 'authenticated');
 
 create policy "Users manage own profile" on public.profiles
-  for update using (auth.uid() = id)
-  with check (auth.uid() = id);
+  for update using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
 
 create policy "Admins manage profiles" on public.profiles
   for update using (
     exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
     )
   );
 
 -- Courses policies
 create policy "Courses readable by authenticated" on public.courses
-  for select using (auth.role() = 'authenticated');
+  for select using ((select auth.role()) in ('authenticated', 'anon'));
 
 create policy "Instructors create courses" on public.courses
   for insert with check (
     exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role in ('instructor', 'admin')
+      where p.id = (select auth.uid()) and p.role in ('instructor', 'admin')
     )
   );
 
 create policy "Owners manage courses" on public.courses
   for update using (
-    instructor_id = auth.uid()
+    instructor_id = (select auth.uid())
     or exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
     )
   )
   with check (
-    instructor_id = auth.uid()
+    instructor_id = (select auth.uid())
     or exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      where p.id = (select auth.uid()) and p.role = 'admin'
+    )
+  );
+
+-- Course sections policies
+create policy "Sections readable" on public.course_sections
+  for select using (
+    exists (
+      select 1 from public.courses c
+      where c.id = course_id
+        and (
+          c.instructor_id = (select auth.uid())
+          or exists (
+            select 1 from public.enrollments e
+            join public.course_runs cr on cr.id = e.course_run_id
+            where e.student_id = (select auth.uid())
+              and e.status = 'approved'
+              and cr.course_id = c.id
+          )
+          or exists (
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
+    )
+  );
+
+create policy "Sections insert by owners" on public.course_sections
+  for insert with check (
+    exists (
+      select 1 from public.courses c
+      where c.id = course_id
+        and (
+          c.instructor_id = (select auth.uid())
+          or exists (
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
+    )
+  );
+
+create policy "Sections update by owners" on public.course_sections
+  for update using (
+    exists (
+      select 1 from public.courses c
+      where c.id = course_id
+        and (
+          c.instructor_id = (select auth.uid())
+          or exists (
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.courses c
+      where c.id = course_id
+        and (
+          c.instructor_id = (select auth.uid())
+          or exists (
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
+    )
+  );
+
+create policy "Sections delete by owners" on public.course_sections
+  for delete using (
+    exists (
+      select 1 from public.courses c
+      where c.id = course_id
+        and (
+          c.instructor_id = (select auth.uid())
+          or exists (
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
     )
   );
 
 -- Course runs policies
 create policy "Course runs readable" on public.course_runs
-  for select using (auth.role() = 'authenticated');
+  for select using ((select auth.role()) in ('authenticated', 'anon'));
 
 create policy "Owners manage course runs" on public.course_runs
   for insert with check (
     exists (
       select 1 from public.courses c
       where c.id = course_id
-        and (c.instructor_id = auth.uid()
+        and (c.instructor_id = (select auth.uid())
           or exists (
             select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
+            where p.id = (select auth.uid()) and p.role = 'admin'
           ))
     )
   );
@@ -266,10 +359,10 @@ create policy "Owners update course runs" on public.course_runs
     exists (
       select 1 from public.courses c
       where c.id = course_id
-        and (c.instructor_id = auth.uid()
+        and (c.instructor_id = (select auth.uid())
           or exists (
             select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
+            where p.id = (select auth.uid()) and p.role = 'admin'
           ))
     )
   )
@@ -277,10 +370,10 @@ create policy "Owners update course runs" on public.course_runs
     exists (
       select 1 from public.courses c
       where c.id = course_id
-        and (c.instructor_id = auth.uid()
+        and (c.instructor_id = (select auth.uid())
           or exists (
             select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
+            where p.id = (select auth.uid()) and p.role = 'admin'
           ))
     )
   );
@@ -290,12 +383,13 @@ create policy "Lessons readable with access" on public.lessons
   for select using (
     exists (
       select 1
-      from public.courses c
-      where c.id = course_id
+      from public.course_sections cs
+      join public.courses c on c.id = cs.course_id
+      where cs.id = section_id
         and (
-          c.instructor_id = auth.uid()
+          c.instructor_id = (select auth.uid())
           or exists (
-            select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
           )
         )
     )
@@ -303,9 +397,11 @@ create policy "Lessons readable with access" on public.lessons
       select 1
       from public.enrollments e
       join public.course_runs cr on cr.id = e.course_run_id
-      where e.student_id = auth.uid()
+      where e.student_id = (select auth.uid())
         and e.status = 'approved'
-        and cr.course_id = course_id
+        and cr.course_id = (
+          select cs.course_id from public.course_sections cs where cs.id = section_id
+        )
         and (cr.access_start is null or now() >= cr.access_start)
         and (cr.access_end is null or now() <= cr.access_end)
     )
@@ -314,13 +410,15 @@ create policy "Lessons readable with access" on public.lessons
 create policy "Owners manage lessons" on public.lessons
   for insert with check (
     exists (
-      select 1 from public.courses c
-      where c.id = course_id
-        and (c.instructor_id = auth.uid()
+      select 1 from public.course_sections cs
+      join public.courses c on c.id = cs.course_id
+      where cs.id = section_id
+        and (
+          c.instructor_id = (select auth.uid())
           or exists (
-            select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
-          ))
+            select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'
+          )
+        )
     )
   );
 
@@ -329,10 +427,10 @@ create policy "Owners update lessons" on public.lessons
     exists (
       select 1 from public.courses c
       where c.id = course_id
-        and (c.instructor_id = auth.uid()
+        and (c.instructor_id = (select auth.uid())
           or exists (
             select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
+            where p.id = (select auth.uid()) and p.role = 'admin'
           ))
     )
   )
@@ -340,17 +438,17 @@ create policy "Owners update lessons" on public.lessons
     exists (
       select 1 from public.courses c
       where c.id = course_id
-        and (c.instructor_id = auth.uid()
+        and (c.instructor_id = (select auth.uid())
           or exists (
             select 1 from public.profiles p
-            where p.id = auth.uid() and p.role = 'admin'
+            where p.id = (select auth.uid()) and p.role = 'admin'
           ))
     )
   );
 
 -- Enrollments policies
 create policy "Students view own enrollments" on public.enrollments
-  for select using (student_id = auth.uid());
+  for select using (student_id = (select auth.uid()));
 
 create policy "Instructors view enrollments" on public.enrollments
   for select using (
@@ -360,18 +458,18 @@ create policy "Instructors view enrollments" on public.enrollments
       join public.courses c on c.id = cr.course_id
       where cr.id = course_run_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
 
 create policy "Students create enrollment requests" on public.enrollments
   for insert with check (
-    student_id = auth.uid()
+    student_id = (select auth.uid())
     and exists (
       select 1 from public.profiles p
-      where p.id = auth.uid() and p.role in ('student', 'instructor')
+      where p.id = (select auth.uid()) and p.role in ('student', 'instructor')
     )
   );
 
@@ -383,15 +481,15 @@ create policy "Instructors update enrollment status" on public.enrollments
       join public.courses c on c.id = cr.course_id
       where cr.id = course_run_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
 
 -- Progress policies
 create policy "Students view own progress" on public.progress
-  for select using (student_id = auth.uid());
+  for select using (student_id = (select auth.uid()));
 
 create policy "Instructors view learner progress" on public.progress
   for select using (
@@ -401,18 +499,18 @@ create policy "Instructors view learner progress" on public.progress
       join public.courses c on c.id = cr.course_id
       where cr.id = course_run_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
 
 create policy "Students manage own progress" on public.progress
-  for insert with check (student_id = auth.uid());
+  for insert with check (student_id = (select auth.uid()));
 
 create policy "Students update own progress" on public.progress
-  for update using (student_id = auth.uid())
-  with check (student_id = auth.uid());
+  for update using (student_id = (select auth.uid()))
+  with check (student_id = (select auth.uid()));
 
 -- Quizzes policies
 create policy "Quizzes readable with access" on public.quizzes
@@ -422,8 +520,8 @@ create policy "Quizzes readable with access" on public.quizzes
       join public.courses c on c.id = l.course_id
       where l.id = lesson_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
     or exists (
@@ -431,7 +529,7 @@ create policy "Quizzes readable with access" on public.quizzes
       from public.enrollments e
       join public.course_runs cr on cr.id = e.course_run_id
       join public.lessons l on l.course_id = cr.course_id
-      where e.student_id = auth.uid()
+      where e.student_id = (select auth.uid())
         and e.status = 'approved'
         and l.id = lesson_id
         and (cr.access_start is null or now() >= cr.access_start)
@@ -446,8 +544,8 @@ create policy "Owners manage quizzes" on public.quizzes
       join public.courses c on c.id = l.course_id
       where l.id = lesson_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
@@ -459,8 +557,8 @@ create policy "Owners update quizzes" on public.quizzes
       join public.courses c on c.id = l.course_id
       where l.id = lesson_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   )
@@ -470,8 +568,8 @@ create policy "Owners update quizzes" on public.quizzes
       join public.courses c on c.id = l.course_id
       where l.id = lesson_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
@@ -485,13 +583,13 @@ create policy "Questions readable with access" on public.quiz_questions
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
     or exists (
       select 1 from public.quiz_attempts qa
-      where qa.quiz_id = quiz_id and qa.student_id = auth.uid()
+      where qa.quiz_id = quiz_id and qa.student_id = (select auth.uid())
     )
   );
 
@@ -503,8 +601,8 @@ create policy "Owners manage questions" on public.quiz_questions
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
@@ -517,8 +615,8 @@ create policy "Owners update questions" on public.quiz_questions
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   )
@@ -529,8 +627,8 @@ create policy "Owners update questions" on public.quiz_questions
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
@@ -545,8 +643,8 @@ create policy "Options readable with access" on public.quiz_options
       join public.courses c on c.id = l.course_id
       where qq.id = question_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
     or exists (
@@ -554,7 +652,7 @@ create policy "Options readable with access" on public.quiz_options
       where qa.quiz_id = (
         select qq.quiz_id from public.quiz_questions qq where qq.id = question_id
       )
-        and qa.student_id = auth.uid()
+        and qa.student_id = (select auth.uid())
     )
   );
 
@@ -567,8 +665,8 @@ create policy "Owners manage options" on public.quiz_options
       join public.courses c on c.id = l.course_id
       where qq.id = question_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
@@ -582,8 +680,8 @@ create policy "Owners update options" on public.quiz_options
       join public.courses c on c.id = l.course_id
       where qq.id = question_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   )
@@ -595,15 +693,15 @@ create policy "Owners update options" on public.quiz_options
       join public.courses c on c.id = l.course_id
       where qq.id = question_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
 
 -- Quiz attempts policies
 create policy "Students view own attempts" on public.quiz_attempts
-  for select using (student_id = auth.uid());
+  for select using (student_id = (select auth.uid()));
 
 create policy "Instructors view attempts" on public.quiz_attempts
   for select using (
@@ -614,15 +712,15 @@ create policy "Instructors view attempts" on public.quiz_attempts
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
 
 create policy "Students start attempts" on public.quiz_attempts
   for insert with check (
-    student_id = auth.uid()
+    student_id = (select auth.uid())
     and exists (
       select 1
       from public.enrollments e
@@ -630,14 +728,14 @@ create policy "Students start attempts" on public.quiz_attempts
       join public.lessons l on l.course_id = cr.course_id
       join public.quizzes q on q.lesson_id = l.id
       where q.id = quiz_id
-        and e.student_id = auth.uid()
+        and e.student_id = (select auth.uid())
         and e.status = 'approved'
     )
   );
 
 create policy "Students update own attempts" on public.quiz_attempts
-  for update using (student_id = auth.uid())
-  with check (student_id = auth.uid());
+  for update using (student_id = (select auth.uid()))
+  with check (student_id = (select auth.uid()));
 
 create policy "Instructors grade attempts" on public.quiz_attempts
   for update using (
@@ -648,8 +746,8 @@ create policy "Instructors grade attempts" on public.quiz_attempts
       join public.courses c on c.id = l.course_id
       where q.id = quiz_id
         and (
-          c.instructor_id = auth.uid()
-          or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+          c.instructor_id = (select auth.uid())
+          or exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin')
         )
     )
   );
