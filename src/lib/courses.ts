@@ -19,10 +19,11 @@ export type CourseWithRelations = Tables<"courses"> & {
 export async function getPublishedCourses() {
   try {
     const supabase = getSupabaseServerComponentClient();
+    // Fetch courses with minimal related data to avoid heavy lateral JSON queries
     const { data, error } = await supabase
       .from("courses")
       .select(
-        "*, course_runs(*), course_sections(*, lessons(*)), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+        `id, title, slug, summary, cover_image_url, is_published, created_at, instructor:profiles!courses_instructor_id_fkey(id, full_name, email)`
       )
       .eq("is_published", true)
       .order("created_at", { ascending: false });
@@ -31,14 +32,8 @@ export async function getPublishedCourses() {
       throw new Error(`Kurslar alınırken hata oluştu: ${error.message}`);
     }
 
-    const result = (data ?? []).map((course) => ({
-      ...(course as unknown as CourseWithRelations),
-      sections: ((course as unknown as CourseWithRelations).sections ?? []).map((section) => ({
-        ...section,
-        lessons: (section.lessons ?? []).filter((lesson) => lesson.is_published),
-      })),
-    })) as CourseWithRelations[];
-
+    // Return courses as lightweight objects. Full sections/lessons are loaded by getCourseDetail when needed.
+    const result = (data ?? []) as unknown as CourseWithRelations[];
     return result.filter((course) => course.is_published);
   } catch (err) {
     console.error("Supabase kurs sorgusu hatası", err);
@@ -77,29 +72,60 @@ export function partitionCoursesByRunState(courses: CourseWithRelations[]) {
 
 export async function getCourseDetail(courseId: string) {
   const supabase = getSupabaseServerComponentClient();
-  const { data, error } = await supabase
+
+  // 1) Fetch base course + instructor
+  const { data: courseData, error: courseError } = await supabase
     .from("courses")
     .select(
-      "*, course_runs(*), course_sections(*, lessons(*)), instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
+      "id, title, slug, description, summary, cover_image_url, is_published, created_at, updated_at, instructor:profiles!courses_instructor_id_fkey(id, full_name, email)"
     )
     .eq("id", courseId)
     .single();
 
-  if (error) {
-    throw new Error(`Kurs detayı alınamadı: ${error.message}`);
+  if (courseError || !courseData) {
+    throw new Error(`Kurs detayı alınamadı: ${courseError?.message ?? "not found"}`);
   }
 
-  const typedData = data as Tables<"courses"> & {
+  // 2) Fetch course runs (lightweight fields)
+  const { data: runsData } = await supabase
+    .from("course_runs")
+    .select("id, course_id, label, access_start, access_end, application_start, application_end, enrollment_limit")
+    .eq("course_id", courseId)
+    .order("access_start", { ascending: false });
+
+  // 3) Fetch course sections
+  const { data: sectionsData } = await supabase
+    .from("course_sections")
+    .select("id, course_id, title, order_index")
+    .eq("course_id", courseId)
+    .order("order_index", { ascending: true });
+
+  const sectionIds = (sectionsData ?? []).map((s: any) => s.id);
+
+  // 4) Fetch published lessons for the sections in one query
+  let lessonsData: any[] = [];
+  if (sectionIds.length > 0) {
+    const { data: ldata } = await supabase
+      .from("lessons")
+      .select("id, course_id, section_id, title, order_index, is_published, video_url, content")
+      .in("section_id", sectionIds)
+      .eq("is_published", true)
+      .order("order_index", { ascending: true });
+    lessonsData = ldata ?? [];
+  }
+
+  const sectionsWithLessons = (sectionsData ?? []).map((section: any) => ({
+    ...section,
+    lessons: (lessonsData ?? []).filter((l) => l.section_id === section.id),
+  }));
+
+  return {
+    ...(courseData as any),
+    course_runs: runsData ?? [],
+    course_sections: sectionsWithLessons,
+  } as Tables<"courses"> & {
     instructor: Pick<Tables<"profiles">, "id" | "full_name" | "email"> | null;
     course_runs: Tables<"course_runs">[];
     course_sections: (Tables<"course_sections"> & { lessons: Tables<"lessons">[] })[];
-  };
-
-  return {
-    ...typedData,
-    course_sections: (typedData.course_sections ?? []).map((section) => ({
-      ...section,
-      lessons: (section.lessons ?? []).filter((lesson) => lesson.is_published),
-    })),
   };
 }

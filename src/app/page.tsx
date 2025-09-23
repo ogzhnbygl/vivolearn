@@ -89,12 +89,12 @@ function CourseSection({ title, emptyText, courses }: CourseSectionProps) {
                     </p>
                     <p>
                       <span className="font-medium text-slate-800">Erişim aralığı:</span> {" "}
-                      {course.course_runs.length > 0
-                        ? formatDateRange(
-                            course.course_runs[0]?.access_start,
-                            course.course_runs[0]?.access_end
-                          )
-                        : "Takvim yakında"}
+                        {Array.isArray(course.course_runs) && course.course_runs.length > 0
+                          ? formatDateRange(
+                              course.course_runs[0]?.access_start,
+                              course.course_runs[0]?.access_end
+                            )
+                          : "Takvim yakında"}
                     </p>
                   </div>
                   <div className="mt-auto flex items-center gap-2 text-xs uppercase tracking-wide text-primary-600 transition group-hover:text-primary-700">

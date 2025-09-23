@@ -26,7 +26,7 @@ export default async function CoursesPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {courses.map((course) => {
-          const schedule = course.course_runs[0] ?? null;
+          const schedule = Array.isArray(course.course_runs) && course.course_runs.length > 0 ? course.course_runs[0] : null;
 
           return (
             <Card key={course.id} className="h-full">
